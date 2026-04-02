@@ -12,7 +12,7 @@ const app    = express();
 const mollie = createMollieClient({ apiKey: process.env.MOLLIE_API_KEY });
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, '.')));
 
 const methodMap = { ideal: 'ideal', paypal: 'paypal', card: 'creditcard', bank: 'banktransfer' };
 
