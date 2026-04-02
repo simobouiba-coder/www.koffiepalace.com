@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Koffie Palace – Beheerpaneel</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Jost:wght@200;300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --black:    #07070A;
+  --deep:     #0E0C10;
+  --surface:  #141218;
+  --surface2: #1C1920;
+  --gold:     #C9A84C;
+  --gold-lt:  #E2C47A;
+  --gold-dim: rgba(201,168,76,0.12);
+  --white:    #F5F0E8;
+  --muted:    rgba(245,240,232,0.45);
+  --border:   rgba(201,168,76,0.15);
+  --red:      #c0392b;
+  --green:    #27ae60;
+}
+
+body {
+  font-family: 'Jost', sans-serif;
+  background: var(--black);
+  color: var(--white);
+  min-height: 100vh;
+  display: flex;
+}
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: 220px;
+  min-height: 100vh;
+  background: var(--deep);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+}
+
+.sidebar-logo {
+  padding: 1.8rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-logo h1 {
+  font-family: 'Cormorant Garamond', serif;
+  color: var(--gold);
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.sidebar-logo p {
+  font-size: 0.7rem;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-top: 0.2rem;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 1.5rem 0;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  border-left: 2px solid transparent;
+  letter-spacing: 0.05em;
+}
+
+.nav-item:hover { color: var(--white); background: var(--gold-dim); }
+.nav-item.active { color: var(--gold); border-left-color: var(--gold); background: var(--gold-dim); }
+
+.nav-icon { font-size: 1.1rem; width: 20px; text-align: center; }
+
+.sidebar-footer {
+  padding: 1.2rem 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.back-link {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-size: 0.78rem; color: var(--muted);
+  text-decoration: none; letter-spacing: 0.08em;
+  transition: color 0.2s;
+}
+.back-link:hover { color: var(--gold); }
+
+/* ── MAIN ── */
+.main {
+  margin-left: 220px;
+  flex: 1;
+  padding: 2.5rem;
+  min-height: 100vh;
+}
+
+.page { display: none; }
+.page.active { display: block; }
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.page-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 2rem;
+  font-weight: 400;
+  color: var(--white);
+}
+
+.page-subtitle {
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-top: 0.2rem;
+  font-weight: 300;
+}
+
+/* ── BUTTONS ── */
+.btn {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  padding: 0.7rem 1.5rem;
+  font-family: 'Jost', sans-serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+.btn-gold { background: var(--gold); color: var(--black); font-weight: 500; }
+.btn-gold:hover { background: var(--gold-lt); }
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+.btn-outline:hover { border-color: var(--gold); color: var(--gold); }
+
+.btn-danger {
+  background: transparent;
+  border: 1px solid rgba(192,57,43,0.3);
+  color: rgba(192,57,43,0.8);
+  font-size: 0.72rem;
+  padding: 0.45rem 0.9rem;
+}
+.btn-danger:hover { background: rgba(192,57,43,0.1); border-color: var(--red); color: var(--red); }
+
+.btn-edit {
+  background: var(--gold-dim);
+  border: 1px solid var(--border);
+  color: var(--gold);
+  font-size: 0.72rem;
+  padding: 0.45rem 0.9rem;
+}
+.btn-edit:hover { background: rgba(201,168,76,0.2); }
+
+/* ── STATS ROW ── */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  margin-bottom: 2.5rem;
+}
+
+.stat-box {
+  background: var(--surface);
+  padding: 1.4rem 1.6rem;
+}
+
+.stat-val {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 2rem;
+  color: var(--gold);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.stat-lbl {
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-top: 0.4rem;
+}
+
+/* ── PRODUCT GRID ── */
+.products-toolbar {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.filter-tabs {
+  display: flex;
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+}
+
+.filter-tab {
+  background: var(--surface);
+  border: none;
+  color: var(--muted);
+  font-family: 'Jost', sans-serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.6rem 1.2rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-tab.active { background: var(--gold-dim); color: var(--gold); }
+.filter-tab:hover { color: var(--white); }
+
+.products-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+}
+
+.product-card {
+  background: var(--surface);
+  padding: 0;
+  transition: background 0.2s;
+  position: relative;
+}
+
+.product-card:hover { background: var(--surface2); }
+
+.product-img {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  display: block;
+  background: var(--surface2);
+}
+
+.product-img-placeholder {
+  width: 100%;
+  height: 160px;
+  background: linear-gradient(145deg, var(--surface2), var(--surface));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.product-body { padding: 1.2rem; }
+
+.product-category {
+  font-size: 0.65rem;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin-bottom: 0.4rem;
+}
+
+.product-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.1rem;
+  color: var(--white);
+  margin-bottom: 0.3rem;
+}
+
+.product-desc {
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-bottom: 0.8rem;
+  font-weight: 300;
+}
+
+.product-price {
+  font-size: 1rem;
+  color: var(--gold);
+  font-weight: 500;
+  margin-bottom: 0.8rem;
+}
+
+.product-actions { display: flex; gap: 0.5rem; }
+
+.product-badge {
+  position: absolute;
+  top: 0.7rem; right: 0.7rem;
+  background: var(--gold);
+  color: var(--black);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.6rem;
+  font-weight: 500;
+}
+
+/* ── MODAL ── */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+
+.modal-overlay.open { display: flex; align-items: center; justify-content: center; }
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  backdrop-filter: blur(6px);
+}
+
+.modal {
+  position: relative;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  width: min(580px, 95vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: modalIn 0.25s ease;
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.5rem;
+  font-weight: 400;
+}
+
+.modal-close {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  width: 32px; height: 32px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+.modal-close:hover { border-color: var(--gold); color: var(--gold); }
+
+.modal-body { padding: 2rem; }
+
+/* ── FORM ── */
+.form-group { margin-bottom: 1.3rem; }
+
+.form-group label {
+  display: block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  margin-bottom: 0.45rem;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--white);
+  padding: 0.8rem 1rem;
+  font-family: 'Jost', sans-serif;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder { color: rgba(245,240,232,0.2); }
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus { border-color: rgba(201,168,76,0.5); }
+
+.form-group textarea { min-height: 90px; resize: vertical; }
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+/* ── IMAGE UPLOAD ── */
+.img-upload-area {
+  border: 2px dashed var(--border);
+  background: var(--surface2);
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s;
+  position: relative;
+}
+
+.img-upload-area:hover { border-color: rgba(201,168,76,0.4); background: var(--surface); }
+.img-upload-area.dragover { border-color: var(--gold); background: var(--gold-dim); }
+
+.img-upload-area input[type="file"] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer;
+  width: 100%; height: 100%; border: none; background: none; padding: 0;
+}
+
+.upload-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+.upload-text { font-size: 0.85rem; color: var(--muted); }
+.upload-hint { font-size: 0.72rem; color: rgba(245,240,232,0.25); margin-top: 0.3rem; }
+
+.img-preview {
+  width: 100%;
+  max-height: 200px;
+  object-fit: cover;
+  display: none;
+  margin-top: 1rem;
+  border: 1px solid var(--border);
+}
+
+.modal-footer {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  padding: 1.2rem 2rem;
+  border-top: 1px solid var(--border);
+}
+
+/* ── TOAST ── */
+.toast {
+  position: fixed;
+  bottom: 2rem; right: 2rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--gold);
+  padding: 1rem 1.5rem;
+  font-size: 0.85rem;
+  color: var(--white);
+  z-index: 9999;
+  animation: toastIn 0.3s ease;
+  display: none;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── EMPTY STATE ── */
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--muted);
+  grid-column: 1/-1;
+  background: var(--surface);
+}
+.empty-icon { font-size: 3rem; margin-bottom: 1rem; }
+.empty-text { font-size: 0.9rem; }
+
+/* ── ORDERS ── */
+.orders-list { display: flex; flex-direction: column; gap: 1px; background: var(--border); border: 1px solid var(--border); }
+
+.order-row {
+  background: var(--surface);
+  padding: 1.2rem 1.5rem;
+  display: grid;
+  grid-template-columns: 120px 1fr 120px 100px 120px;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.88rem;
+  transition: background 0.2s;
+}
+
+.order-row:hover { background: var(--surface2); }
+.order-row.header { background: var(--surface2); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+
+.order-status {
+  display: inline-block;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.status-paid    { background: rgba(39,174,96,0.15);  color: #2ecc71; border: 1px solid rgba(39,174,96,0.3); }
+.status-pending { background: rgba(241,196,15,0.1);  color: #f1c40f; border: 1px solid rgba(241,196,15,0.2); }
+.status-failed  { background: rgba(192,57,43,0.1);   color: #e74c3c; border: 1px solid rgba(192,57,43,0.2); }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 900px) {
+  .sidebar { width: 60px; }
+  .sidebar-logo p, .nav-item span, .sidebar-logo h1 { display: none; }
+  .main { margin-left: 60px; }
+  .stats-row { grid-template-columns: 1fr 1fr; }
+}
+
+  .teksten-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+
+  .tekst-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1.8rem;
+  }
+
+  .tekst-section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tekst-section-icon { font-size: 1.4rem; }
+
+  .tekst-section h3 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.2rem;
+    font-weight: 400;
+    color: var(--white);
+  }
+
+  @media (max-width: 900px) {
+    .teksten-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <h1>☕ Koffie Palace</h1>
+    <p>Beheerpaneel</p>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-item active" onclick="showPage('dashboard')">
+      <span class="nav-icon">📊</span>
+      <span>Dashboard</span>
+    </div>
+    <div class="nav-item" onclick="showPage('products')">
+      <span class="nav-icon">📦</span>
+      <span>Producten</span>
+    </div>
+    <div class="nav-item" onclick="showPage('orders')">
+      <span class="nav-icon">🛒</span>
+      <span>Bestellingen</span>
+    </div>
+    <div class="nav-item" onclick="showPage('teksten')">
+      <span class="nav-icon">✏️</span>
+      <span>Teksten</span>
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <a href="index.html" class="back-link">← <span>Naar website</span></a>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- DASHBOARD -->
+  <div id="page-dashboard" class="page active">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Dashboard</div>
+        <div class="page-subtitle">Welkom terug — Koffie Palace</div>
+      </div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="stat-val" id="stat-products">0</div>
+        <div class="stat-lbl">Producten</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="stat-machines">0</div>
+        <div class="stat-lbl">Machines</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="stat-bonen">0</div>
+        <div class="stat-lbl">Koffiebonen</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="stat-onderdelen">0</div>
+        <div class="stat-lbl">Onderdelen</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="stat-orders">0</div>
+        <div class="stat-lbl">Bestellingen</div>
+      </div>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);padding:2rem;margin-top:1rem;">
+      <p style="font-family:'Cormorant Garamond',serif;font-size:1.3rem;margin-bottom:1rem;color:var(--white);">Snel toevoegen</p>
+      <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+        <button class="btn btn-gold" onclick="openModal()">➕ Nieuw product</button>
+        <button class="btn btn-outline" onclick="showPage('products')">📦 Alle producten</button>
+        <button class="btn btn-outline" onclick="showPage('orders')">🛒 Bestellingen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRODUCTS -->
+  <div id="page-products" class="page">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Producten</div>
+        <div class="page-subtitle">Beheer uw koffiebonen en machines</div>
+      </div>
+      <button class="btn btn-gold" onclick="openModal()">➕ Product toevoegen</button>
+    </div>
+
+    <div class="products-toolbar">
+      <div class="filter-tabs">
+        <button class="filter-tab active" onclick="filterProducts('all', this)">Alle</button>
+        <button class="filter-tab" onclick="filterProducts('bonen', this)">☕ Koffiebonen</button>
+        <button class="filter-tab" onclick="filterProducts('machine', this)">⚙️ Machines</button>
+        <button class="filter-tab" onclick="filterProducts('onderdeel', this)">🔧 Onderdelen</button>
+      </div>
+    </div>
+
+    <div class="products-grid" id="products-grid">
+      <div class="empty-state">
+        <div class="empty-icon">📦</div>
+        <div class="empty-text">Nog geen producten. Klik op "Product toevoegen" om te beginnen.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ORDERS -->
+  <div id="page-orders" class="page">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Bestellingen</div>
+        <div class="page-subtitle">Overzicht van alle bestellingen via Mollie</div>
+      </div>
+    </div>
+
+    <div class="orders-list">
+      <div class="order-row header">
+        <span>Bestelnr.</span>
+        <span>Klant</span>
+        <span>Bedrag</span>
+        <span>Status</span>
+        <span>Datum</span>
+      </div>
+      <div id="orders-body">
+        <div style="background:var(--surface);padding:3rem;text-align:center;color:var(--muted);font-size:0.88rem;">
+          Nog geen bestellingen. Bestellingen verschijnen hier zodra klanten via de website bestellen.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TEKSTEN -->
+  <div id="page-teksten" class="page">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Teksten bewerken</div>
+        <div class="page-subtitle">Pas de inhoud van uw website aan</div>
+      </div>
+      <button class="btn btn-gold" onclick="saveTeksten()">✓ Opslaan</button>
+    </div>
+
+    <div class="teksten-grid">
+      <!-- Hero -->
+      <div class="tekst-section">
+        <div class="tekst-section-header">
+          <span class="tekst-section-icon">🏠</span>
+          <h3>Hero — Bovenste sectie</h3>
+        </div>
+        <div class="form-group">
+          <label>Hoofdtitel</label>
+          <input type="text" id="t-hero-title" value="Welkom bij Koffie Palace">
+        </div>
+        <div class="form-group">
+          <label>Ondertitel</label>
+          <textarea id="t-hero-sub">Uw specialist in reparatie, onderhoud en verkoop van koffieapparaten — en de beste koffiebonen voor thuis, kantoor en horeca.</textarea>
+        </div>
+        <div class="form-group">
+          <label>Knoptekst</label>
+          <input type="text" id="t-hero-btn" value="Afspraak maken">
+        </div>
+      </div>
+
+      <!-- Over ons -->
+      <div class="tekst-section">
+        <div class="tekst-section-header">
+          <span class="tekst-section-icon">☕</span>
+          <h3>Over ons</h3>
+        </div>
+        <div class="form-group">
+          <label>Titel</label>
+          <input type="text" id="t-about-title" value="Passie voor koffie, vakkennis voor uw apparaat">
+        </div>
+        <div class="form-group">
+          <label>Tekst</label>
+          <textarea id="t-about-text">Bij Koffie Palace combineren wij technische expertise met een diepe liefde voor koffie. Wij helpen particulieren, kantoren en horecabedrijven om altijd de perfecte kop koffie te kunnen zetten.</textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Stat 1 — Getal</label>
+            <input type="text" id="t-stat1-num" value="500+">
+          </div>
+          <div class="form-group">
+            <label>Stat 1 — Label</label>
+            <input type="text" id="t-stat1-lbl" value="Reparaties per jaar">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Stat 2 — Getal</label>
+            <input type="text" id="t-stat2-num" value="100%">
+          </div>
+          <div class="form-group">
+            <label>Stat 2 — Label</label>
+            <input type="text" id="t-stat2-lbl" value="Klanttevredenheid">
+          </div>
+        </div>
+      </div>
+
+      <!-- Contact -->
+      <div class="tekst-section">
+        <div class="tekst-section-header">
+          <span class="tekst-section-icon">📞</span>
+          <h3>Contactgegevens</h3>
+        </div>
+        <div class="form-group">
+          <label>Telefoonnummer</label>
+          <input type="text" id="t-telefoon" value="+31 6 13 86 41 89">
+        </div>
+        <div class="form-group">
+          <label>E-mailadres</label>
+          <input type="email" id="t-email" value="info@koffiepalace.nl">
+        </div>
+        <div class="form-group">
+          <label>Adres</label>
+          <input type="text" id="t-adres" value="Nederland, onder Nadira Store">
+        </div>
+        <div class="form-group">
+          <label>Openingstijden</label>
+          <input type="text" id="t-openingstijden" value="Ma – Vr: 08:00 – 18:00">
+        </div>
+      </div>
+
+      <!-- Offerte tekst -->
+      <div class="tekst-section">
+        <div class="tekst-section-header">
+          <span class="tekst-section-icon">📋</span>
+          <h3>Offerte sectie</h3>
+        </div>
+        <div class="form-group">
+          <label>Titel offerte banner</label>
+          <input type="text" id="t-offerte-title" value="☕ Koffiemachine offerte?">
+        </div>
+        <div class="form-group">
+          <label>Tekst offerte banner</label>
+          <textarea id="t-offerte-sub">Niet zeker welke machine bij u past? Vraag gratis en vrijblijvend een offerte aan — wij adviseren u persoonlijk.</textarea>
+        </div>
+        <div class="form-group">
+          <label>Knoptekst</label>
+          <input type="text" id="t-offerte-btn" value="Gratis offerte aanvragen →">
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- PRODUCT MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal-backdrop" onclick="closeModal()"></div>
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Product toevoegen</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Image upload -->
+      <div class="form-group">
+        <label>Productfoto</label>
+        <div class="img-upload-area" id="upload-area">
+          <input type="file" accept="image/*" onchange="handleImageUpload(event)" id="img-input">
+          <div class="upload-icon">🖼️</div>
+          <div class="upload-text">Klik of sleep een foto hierheen</div>
+          <div class="upload-hint">JPG, PNG of WEBP · Max 5MB</div>
+        </div>
+        <img id="img-preview" class="img-preview" alt="Preview">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Categorie</label>
+          <select id="prod-cat">
+            <option value="bonen">☕ Koffiebonen</option>
+            <option value="machine">⚙️ Machine</option>
+            <option value="onderdeel">🔧 Onderdeel</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Emoji icoon</label>
+          <input type="text" id="prod-emoji" placeholder="bijv. 🫘 of ⚙️" maxlength="4">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Productnaam</label>
+        <input type="text" id="prod-name" placeholder="bijv. Espresso Classico of Palace Pro 300">
+      </div>
+
+      <div class="form-group">
+        <label>Ondertitel / variant</label>
+        <input type="text" id="prod-sub" placeholder="bijv. 500g · Krachtig & romig">
+      </div>
+
+      <div class="form-group">
+        <label>Beschrijving</label>
+        <textarea id="prod-desc" placeholder="Beschrijf het product kort..."></textarea>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Prijs (€)</label>
+          <input type="number" id="prod-price" placeholder="14.95" step="0.01" min="0">
+        </div>
+        <div class="form-group">
+          <label>Label (optioneel)</label>
+          <input type="text" id="prod-badge" placeholder="bijv. Nieuw · Bestseller">
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Annuleren</button>
+      <button class="btn btn-gold" onclick="saveProduct()">✓ Opslaan</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── STATE ──
+let products = JSON.parse(localStorage.getItem('kp_products') || '[]');
+let editingId = null;
+let currentImgData = null;
+let currentFilter = 'all';
+
+// Preload default products
+if (products.length === 0) {
+  products = [
+    { id: 'esp',   cat: 'bonen',   emoji: '🫘', name: 'Espresso Classico',   sub: '500g · Krachtig & romig',        desc: 'Krachtig, vol en romig — de perfecte basis voor elke espresso.',              price: 14.95, badge: 'Bestseller', img: null },
+    { id: 'dark',  cat: 'bonen',   emoji: '🍫', name: 'Dark Roast',           sub: '500g · Diep geroosterd',         desc: 'Diep geroosterd met chocoladetonen, voor de echte koffieliefhebber.',           price: 15.95, badge: '',          img: null },
+    { id: 'milky', cat: 'bonen',   emoji: '🥛', name: 'Milky Blend',          sub: '500g · Zacht & romig',           desc: 'Speciaal gemengd voor cappuccino en latte — zacht en romig.',                  price: 13.95, badge: '',          img: null },
+    { id: 'decaf', cat: 'bonen',   emoji: '🍃', name: 'Decafé Deluxe',        sub: '500g · Cafeïnevrij',             desc: 'Cafeïnevrij maar vol van smaak — geniet zonder zorgen, op elk moment.',         price: 14.95, badge: 'Nieuw',     img: null },
+    { id: 'm1',    cat: 'machine', emoji: '☕', name: 'Espresso Pro 200',      sub: 'Halfautomaat · Voor thuis',      desc: 'De ideale halfautomaat voor thuis — eenvoudig en betrouwbaar.',                 price: 299.00, badge: '',         img: null },
+    { id: 'm2',    cat: 'machine', emoji: '⚙️', name: 'Volautomaat Palace X1', sub: 'Volautomaat · Kantoor & horeca', desc: 'Krachtige volautomaat voor druk gebruik op kantoor of in de horeca.',          price: 749.00, badge: 'Populair', img: null },
+    { id: 'm3',    cat: 'machine', emoji: '🏆', name: 'Barista Elite 3000',    sub: 'Professioneel · Horeca',         desc: 'Professionele espressomachine van horecakwaliteit.',                           price: 1499.00, badge: '',        img: null },
+    { id: 'm4',    cat: 'machine', emoji: '💎', name: 'Capsule Compact Mini',  sub: 'Capsule · Compact & snel',       desc: 'Compacte capsulemachine — perfect voor kleine keukens.',                       price: 129.00, badge: '',         img: null },
+    { id: 'm5',    cat: 'machine', emoji: '🔩', name: 'Palace Grinder Pro',    sub: 'Koffiemolen · Versgemalen',      desc: 'Versgemalen bonen voor de beste smaak — stille en precieze molen.',            price: 189.00, badge: '',         img: null },
+    { id: 'm6',    cat: 'machine', emoji: '🌟', name: 'Smart Touch 5000',      sub: 'Touchscreen · WiFi · App',       desc: 'Bedien je koffieapparaat via de app — modern en slim.',                        price: 999.00, badge: 'Nieuw',    img: null },
+  ];
+  saveToStorage();
+}
+
+function saveToStorage() {
+  localStorage.setItem('kp_products', JSON.stringify(products));
+  updateStats();
+}
+
+function updateStats() {
+  const machines  = products.filter(p => p.cat === 'machine');
+  const bonen     = products.filter(p => p.cat === 'bonen');
+  const onderdelen = products.filter(p => p.cat === 'onderdeel');
+  document.getElementById('stat-products').textContent  = products.length;
+  document.getElementById('stat-machines').textContent  = machines.length;
+  document.getElementById('stat-bonen').textContent     = bonen.length;
+  document.getElementById('stat-onderdelen').textContent = onderdelen.length;
+  document.getElementById('stat-orders').textContent    = '—';
+}
+
+function saveTeksten() {
+  const teksten = {
+    heroTitle:       document.getElementById('t-hero-title').value,
+    heroSub:         document.getElementById('t-hero-sub').value,
+    heroBtn:         document.getElementById('t-hero-btn').value,
+    aboutTitle:      document.getElementById('t-about-title').value,
+    aboutText:       document.getElementById('t-about-text').value,
+    stat1Num:        document.getElementById('t-stat1-num').value,
+    stat1Lbl:        document.getElementById('t-stat1-lbl').value,
+    stat2Num:        document.getElementById('t-stat2-num').value,
+    stat2Lbl:        document.getElementById('t-stat2-lbl').value,
+    telefoon:        document.getElementById('t-telefoon').value,
+    email:           document.getElementById('t-email').value,
+    adres:           document.getElementById('t-adres').value,
+    openingstijden:  document.getElementById('t-openingstijden').value,
+    offerteTitle:    document.getElementById('t-offerte-title').value,
+    offerteSub:      document.getElementById('t-offerte-sub').value,
+    offerteBtn:      document.getElementById('t-offerte-btn').value,
+  };
+  localStorage.setItem('kp_teksten', JSON.stringify(teksten));
+  showToast('✅ Teksten opgeslagen!');
+}
+
+// Load saved teksten
+function loadTeksten() {
+  const saved = localStorage.getItem('kp_teksten');
+  if (!saved) return;
+  const t = JSON.parse(saved);
+  Object.entries(t).forEach(([key, val]) => {
+    const map = {
+      heroTitle: 't-hero-title', heroSub: 't-hero-sub', heroBtn: 't-hero-btn',
+      aboutTitle: 't-about-title', aboutText: 't-about-text',
+      stat1Num: 't-stat1-num', stat1Lbl: 't-stat1-lbl',
+      stat2Num: 't-stat2-num', stat2Lbl: 't-stat2-lbl',
+      telefoon: 't-telefoon', email: 't-email', adres: 't-adres',
+      openingstijden: 't-openingstijden',
+      offerteTitle: 't-offerte-title', offerteSub: 't-offerte-sub', offerteBtn: 't-offerte-btn',
+    };
+    const el = document.getElementById(map[key]);
+    if (el) el.value = val;
+  });
+}
+
+// ── NAVIGATION ──
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (name === 'products') renderProducts();
+  if (name === 'teksten') loadTeksten();
+}
+
+// ── RENDER PRODUCTS ──
+function renderProducts(filter) {
+  if (filter) currentFilter = filter;
+  const grid = document.getElementById('products-grid');
+  const list = currentFilter === 'all' ? products : products.filter(p => p.cat === currentFilter);
+
+  if (list.length === 0) {
+    grid.innerHTML = `<div class="empty-state"><div class="empty-icon">📦</div><div class="empty-text">Geen producten gevonden.</div></div>`;
+    return;
+  }
+
+  grid.innerHTML = list.map(p => `
+    <div class="product-card" id="card-${p.id}">
+      ${p.badge ? `<div class="product-badge">${p.badge}</div>` : ''}
+      ${p.img
+        ? `<img class="product-img" src="${p.img}" alt="${p.name}">`
+        : `<div class="product-img-placeholder">${p.emoji}</div>`
+      }
+      <div class="product-body">
+        <div class="product-category">${p.cat === 'bonen' ? '☕ Koffiebonen' : p.cat === 'machine' ? '⚙️ Machine' : '🔧 Onderdeel'}</div>
+        <div class="product-name">${p.name}</div>
+        <div class="product-desc">${p.sub}</div>
+        <div class="product-price">€ ${p.price.toFixed(2).replace('.', ',')}</div>
+        <div class="product-actions">
+          <button class="btn btn-edit" onclick="editProduct('${p.id}')">✏️ Bewerken</button>
+          <button class="btn btn-danger" onclick="deleteProduct('${p.id}')">🗑</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function filterProducts(filter, btn) {
+  document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderProducts(filter);
+}
+
+// ── MODAL ──
+function openModal(id) {
+  editingId = null;
+  currentImgData = null;
+  document.getElementById('modal-title').textContent = 'Product toevoegen';
+  document.getElementById('prod-cat').value   = 'bonen';
+  document.getElementById('prod-emoji').value = '';
+  document.getElementById('prod-name').value  = '';
+  document.getElementById('prod-sub').value   = '';
+  document.getElementById('prod-desc').value  = '';
+  document.getElementById('prod-price').value = '';
+  document.getElementById('prod-badge').value = '';
+  document.getElementById('img-preview').style.display = 'none';
+  document.getElementById('upload-area').style.display = 'block';
+  document.getElementById('modal').classList.add('open');
+}
+
+function editProduct(id) {
+  const p = products.find(x => x.id === id);
+  if (!p) return;
+  editingId = id;
+  currentImgData = p.img;
+  document.getElementById('modal-title').textContent = 'Product bewerken';
+  document.getElementById('prod-cat').value   = p.cat;
+  document.getElementById('prod-emoji').value = p.emoji;
+  document.getElementById('prod-name').value  = p.name;
+  document.getElementById('prod-sub').value   = p.sub;
+  document.getElementById('prod-desc').value  = p.desc;
+  document.getElementById('prod-price').value = p.price;
+  document.getElementById('prod-badge').value = p.badge || '';
+  if (p.img) {
+    const preview = document.getElementById('img-preview');
+    preview.src = p.img;
+    preview.style.display = 'block';
+  } else {
+    document.getElementById('img-preview').style.display = 'none';
+  }
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+}
+
+function handleImageUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { showToast('⚠️ Foto is te groot (max 5MB)'); return; }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    currentImgData = ev.target.result;
+    const preview = document.getElementById('img-preview');
+    preview.src = currentImgData;
+    preview.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+function saveProduct() {
+  const name  = document.getElementById('prod-name').value.trim();
+  const price = parseFloat(document.getElementById('prod-price').value);
+
+  if (!name) { showToast('⚠️ Voer een productnaam in'); return; }
+  if (isNaN(price) || price <= 0) { showToast('⚠️ Voer een geldige prijs in'); return; }
+
+  const prod = {
+    id:    editingId || 'p_' + Date.now(),
+    cat:   document.getElementById('prod-cat').value,
+    emoji: document.getElementById('prod-emoji').value || '📦',
+    name,
+    sub:   document.getElementById('prod-sub').value.trim(),
+    desc:  document.getElementById('prod-desc').value.trim(),
+    price,
+    badge: document.getElementById('prod-badge').value.trim(),
+    img:   currentImgData || null,
+  };
+
+  if (editingId) {
+    const idx = products.findIndex(p => p.id === editingId);
+    if (idx !== -1) products[idx] = prod;
+    showToast('✅ Product bijgewerkt!');
+  } else {
+    products.push(prod);
+    showToast('✅ Product toegevoegd!');
+  }
+
+  saveToStorage();
+  closeModal();
+  renderProducts();
+}
+
+function deleteProduct(id) {
+  if (!confirm('Weet u zeker dat u dit product wilt verwijderen?')) return;
+  products = products.filter(p => p.id !== id);
+  saveToStorage();
+  renderProducts();
+  showToast('🗑️ Product verwijderd');
+}
+
+// ── TOAST ──
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => { t.style.display = 'none'; }, 3000);
+}
+
+// ── DRAG & DROP ──
+const uploadArea = document.getElementById('upload-area');
+uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+uploadArea.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadArea.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      currentImgData = ev.target.result;
+      const preview = document.getElementById('img-preview');
+      preview.src = currentImgData;
+      preview.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+// ── INIT ──
+updateStats();
+renderProducts();
+loadTeksten();
+</script>
+</body>
+</html>
