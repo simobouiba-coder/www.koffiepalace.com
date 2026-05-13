@@ -827,7 +827,11 @@ body {
         <div class="form-group">
           <label>Categorie</label>
           <select id="prod-cat">
-            <option value="bonen">☕ Koffiebonen</option>
+            <option value="espresso">☕ Espresso</option>
+            <option value="cappuccino">🥛 Cappuccino</option>
+            <option value="latte">✨ Latte</option>
+            <option value="specialties">🌟 Specialiteiten</option>
+            <option value="bonen">🫘 Koffiebonen</option>
             <option value="machine">⚙️ Machine</option>
             <option value="onderdeel">🔧 Onderdeel</option>
           </select>
@@ -877,42 +881,62 @@ body {
 
 <script>
 // ── STATE ──
-let products = JSON.parse(localStorage.getItem('kp_products') || '[]');
+let products = [];
 let editingId = null;
 let currentImgData = null;
 let currentFilter = 'all';
 
-// Preload default products
-if (products.length === 0) {
-  products = [
-    { id: 'esp',   cat: 'bonen',   emoji: '🫘', name: 'Espresso Classico',   sub: '500g · Krachtig & romig',        desc: 'Krachtig, vol en romig — de perfecte basis voor elke espresso.',              price: 14.95, badge: 'Bestseller', img: null },
-    { id: 'dark',  cat: 'bonen',   emoji: '🍫', name: 'Dark Roast',           sub: '500g · Diep geroosterd',         desc: 'Diep geroosterd met chocoladetonen, voor de echte koffieliefhebber.',           price: 15.95, badge: '',          img: null },
-    { id: 'milky', cat: 'bonen',   emoji: '🥛', name: 'Milky Blend',          sub: '500g · Zacht & romig',           desc: 'Speciaal gemengd voor cappuccino en latte — zacht en romig.',                  price: 13.95, badge: '',          img: null },
-    { id: 'decaf', cat: 'bonen',   emoji: '🍃', name: 'Decafé Deluxe',        sub: '500g · Cafeïnevrij',             desc: 'Cafeïnevrij maar vol van smaak — geniet zonder zorgen, op elk moment.',         price: 14.95, badge: 'Nieuw',     img: null },
-    { id: 'm1',    cat: 'machine', emoji: '☕', name: 'Espresso Pro 200',      sub: 'Halfautomaat · Voor thuis',      desc: 'De ideale halfautomaat voor thuis — eenvoudig en betrouwbaar.',                 price: 299.00, badge: '',         img: null },
-    { id: 'm2',    cat: 'machine', emoji: '⚙️', name: 'Volautomaat Palace X1', sub: 'Volautomaat · Kantoor & horeca', desc: 'Krachtige volautomaat voor druk gebruik op kantoor of in de horeca.',          price: 749.00, badge: 'Populair', img: null },
-    { id: 'm3',    cat: 'machine', emoji: '🏆', name: 'Barista Elite 3000',    sub: 'Professioneel · Horeca',         desc: 'Professionele espressomachine van horecakwaliteit.',                           price: 1499.00, badge: '',        img: null },
-    { id: 'm4',    cat: 'machine', emoji: '💎', name: 'Capsule Compact Mini',  sub: 'Capsule · Compact & snel',       desc: 'Compacte capsulemachine — perfect voor kleine keukens.',                       price: 129.00, badge: '',         img: null },
-    { id: 'm5',    cat: 'machine', emoji: '🔩', name: 'Palace Grinder Pro',    sub: 'Koffiemolen · Versgemalen',      desc: 'Versgemalen bonen voor de beste smaak — stille en precieze molen.',            price: 189.00, badge: '',         img: null },
-    { id: 'm6',    cat: 'machine', emoji: '🌟', name: 'Smart Touch 5000',      sub: 'Touchscreen · WiFi · App',       desc: 'Bedien je koffieapparaat via de app — modern en slim.',                        price: 999.00, badge: 'Nieuw',    img: null },
-  ];
-  saveToStorage();
+const CATEGORY_EMOJI = {
+  espresso:    '☕',
+  cappuccino:  '🥛',
+  latte:       '✨',
+  specialties: '🌟',
+  bonen:       '🫘',
+  machine:     '⚙️',
+  onderdeel:   '🔧',
+};
+
+const CATEGORY_LABEL = {
+  espresso:    '☕ Espresso',
+  cappuccino:  '🥛 Cappuccino',
+  latte:       '✨ Latte',
+  specialties: '🌟 Specialiteiten',
+  bonen:       '☕ Koffiebonen',
+  machine:     '⚙️ Machine',
+  onderdeel:   '🔧 Onderdeel',
+};
+
+// ── API HELPERS ──
+async function apiFetch(url, options = {}) {
+  const res = await fetch(url, {
+    headers: { 'Content-Type': 'application/json' },
+    ...options,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Onbekende fout' }));
+    throw new Error(err.error || 'Server fout');
+  }
+  return res.json();
 }
 
-function saveToStorage() {
-  localStorage.setItem('kp_products', JSON.stringify(products));
-  updateStats();
+// ── LOAD PRODUCTS FROM API ──
+async function loadProducts() {
+  try {
+    products = await apiFetch('/api/products');
+    updateStats();
+    renderProducts();
+  } catch (err) {
+    showToast('⚠️ Kon producten niet laden: ' + err.message);
+  }
 }
 
 function updateStats() {
-  const machines  = products.filter(p => p.cat === 'machine');
-  const bonen     = products.filter(p => p.cat === 'bonen');
-  const onderdelen = products.filter(p => p.cat === 'onderdeel');
-  document.getElementById('stat-products').textContent  = products.length;
-  document.getElementById('stat-machines').textContent  = machines.length;
-  document.getElementById('stat-bonen').textContent     = bonen.length;
-  document.getElementById('stat-onderdelen').textContent = onderdelen.length;
-  document.getElementById('stat-orders').textContent    = '—';
+  const byCategory = cat => products.filter(p => p.category === cat).length;
+  document.getElementById('stat-products').textContent   = products.length;
+  document.getElementById('stat-machines').textContent   = byCategory('machine');
+  document.getElementById('stat-bonen').textContent      = byCategory('bonen') + byCategory('espresso') + byCategory('cappuccino') + byCategory('latte') + byCategory('specialties');
+  document.getElementById('stat-onderdelen').textContent = byCategory('onderdeel');
+  document.getElementById('stat-orders').textContent     = '—';
 }
 
 function saveTeksten() {
@@ -964,40 +988,43 @@ function showPage(name) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
   event.currentTarget.classList.add('active');
-  if (name === 'products') renderProducts();
+  if (name === 'products') loadProducts();
   if (name === 'teksten') loadTeksten();
 }
 
 // ── RENDER PRODUCTS ──
 function renderProducts(filter) {
-  if (filter) currentFilter = filter;
+  if (filter !== undefined) currentFilter = filter;
   const grid = document.getElementById('products-grid');
-  const list = currentFilter === 'all' ? products : products.filter(p => p.cat === currentFilter);
+  const list = currentFilter === 'all' ? products : products.filter(p => p.category === currentFilter);
 
   if (list.length === 0) {
     grid.innerHTML = `<div class="empty-state"><div class="empty-icon">📦</div><div class="empty-text">Geen producten gevonden.</div></div>`;
     return;
   }
 
-  grid.innerHTML = list.map(p => `
+  grid.innerHTML = list.map(p => {
+    const emoji = CATEGORY_EMOJI[p.category] || '📦';
+    const catLabel = CATEGORY_LABEL[p.category] || p.category || '';
+    const price = parseFloat(p.price).toFixed(2).replace('.', ',');
+    return `
     <div class="product-card" id="card-${p.id}">
-      ${p.badge ? `<div class="product-badge">${p.badge}</div>` : ''}
-      ${p.img
-        ? `<img class="product-img" src="${p.img}" alt="${p.name}">`
-        : `<div class="product-img-placeholder">${p.emoji}</div>`
+      ${p.image_url
+        ? `<img class="product-img" src="${p.image_url}" alt="${p.name}">`
+        : `<div class="product-img-placeholder">${emoji}</div>`
       }
       <div class="product-body">
-        <div class="product-category">${p.cat === 'bonen' ? '☕ Koffiebonen' : p.cat === 'machine' ? '⚙️ Machine' : '🔧 Onderdeel'}</div>
+        <div class="product-category">${catLabel}</div>
         <div class="product-name">${p.name}</div>
-        <div class="product-desc">${p.sub}</div>
-        <div class="product-price">€ ${p.price.toFixed(2).replace('.', ',')}</div>
+        <div class="product-desc">${p.description || ''}</div>
+        <div class="product-price">€ ${price}</div>
         <div class="product-actions">
-          <button class="btn btn-edit" onclick="editProduct('${p.id}')">✏️ Bewerken</button>
-          <button class="btn btn-danger" onclick="deleteProduct('${p.id}')">🗑</button>
+          <button class="btn btn-edit" onclick="editProduct(${p.id})">✏️ Bewerken</button>
+          <button class="btn btn-danger" onclick="deleteProduct(${p.id})">🗑</button>
         </div>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 function filterProducts(filter, btn) {
@@ -1007,11 +1034,11 @@ function filterProducts(filter, btn) {
 }
 
 // ── MODAL ──
-function openModal(id) {
+function openModal() {
   editingId = null;
   currentImgData = null;
   document.getElementById('modal-title').textContent = 'Product toevoegen';
-  document.getElementById('prod-cat').value   = 'bonen';
+  document.getElementById('prod-cat').value   = 'espresso';
   document.getElementById('prod-emoji').value = '';
   document.getElementById('prod-name').value  = '';
   document.getElementById('prod-sub').value   = '';
@@ -1027,18 +1054,18 @@ function editProduct(id) {
   const p = products.find(x => x.id === id);
   if (!p) return;
   editingId = id;
-  currentImgData = p.img;
+  currentImgData = p.image_url || null;
   document.getElementById('modal-title').textContent = 'Product bewerken';
-  document.getElementById('prod-cat').value   = p.cat;
-  document.getElementById('prod-emoji').value = p.emoji;
+  document.getElementById('prod-cat').value   = p.category || 'espresso';
+  document.getElementById('prod-emoji').value = '';
   document.getElementById('prod-name').value  = p.name;
-  document.getElementById('prod-sub').value   = p.sub;
-  document.getElementById('prod-desc').value  = p.desc;
+  document.getElementById('prod-sub').value   = '';
+  document.getElementById('prod-desc').value  = p.description || '';
   document.getElementById('prod-price').value = p.price;
-  document.getElementById('prod-badge').value = p.badge || '';
-  if (p.img) {
+  document.getElementById('prod-badge').value = '';
+  if (p.image_url) {
     const preview = document.getElementById('img-preview');
-    preview.src = p.img;
+    preview.src = p.image_url;
     preview.style.display = 'block';
   } else {
     document.getElementById('img-preview').style.display = 'none';
@@ -1064,45 +1091,57 @@ function handleImageUpload(e) {
   reader.readAsDataURL(file);
 }
 
-function saveProduct() {
+async function saveProduct() {
   const name  = document.getElementById('prod-name').value.trim();
   const price = parseFloat(document.getElementById('prod-price').value);
 
   if (!name) { showToast('⚠️ Voer een productnaam in'); return; }
   if (isNaN(price) || price <= 0) { showToast('⚠️ Voer een geldige prijs in'); return; }
 
-  const prod = {
-    id:    editingId || 'p_' + Date.now(),
-    cat:   document.getElementById('prod-cat').value,
-    emoji: document.getElementById('prod-emoji').value || '📦',
+  const payload = {
     name,
-    sub:   document.getElementById('prod-sub').value.trim(),
-    desc:  document.getElementById('prod-desc').value.trim(),
     price,
-    badge: document.getElementById('prod-badge').value.trim(),
-    img:   currentImgData || null,
+    description: document.getElementById('prod-desc').value.trim() || null,
+    category:    document.getElementById('prod-cat').value || null,
+    image_url:   currentImgData || null,
   };
 
-  if (editingId) {
-    const idx = products.findIndex(p => p.id === editingId);
-    if (idx !== -1) products[idx] = prod;
-    showToast('✅ Product bijgewerkt!');
-  } else {
-    products.push(prod);
-    showToast('✅ Product toegevoegd!');
+  try {
+    if (editingId) {
+      const updated = await apiFetch(`/api/products/${editingId}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      });
+      const idx = products.findIndex(p => p.id === editingId);
+      if (idx !== -1) products[idx] = updated;
+      showToast('✅ Product bijgewerkt!');
+    } else {
+      const created = await apiFetch('/api/products', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      products.push(created);
+      showToast('✅ Product toegevoegd!');
+    }
+    updateStats();
+    closeModal();
+    renderProducts();
+  } catch (err) {
+    showToast('⚠️ Opslaan mislukt: ' + err.message);
   }
-
-  saveToStorage();
-  closeModal();
-  renderProducts();
 }
 
-function deleteProduct(id) {
+async function deleteProduct(id) {
   if (!confirm('Weet u zeker dat u dit product wilt verwijderen?')) return;
-  products = products.filter(p => p.id !== id);
-  saveToStorage();
-  renderProducts();
-  showToast('🗑️ Product verwijderd');
+  try {
+    await apiFetch(`/api/products/${id}`, { method: 'DELETE' });
+    products = products.filter(p => p.id !== id);
+    updateStats();
+    renderProducts();
+    showToast('🗑️ Product verwijderd');
+  } catch (err) {
+    showToast('⚠️ Verwijderen mislukt: ' + err.message);
+  }
 }
 
 // ── TOAST ──
@@ -1110,7 +1149,8 @@ function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.style.display = 'block';
-  setTimeout(() => { t.style.display = 'none'; }, 3000);
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.display = 'none'; }, 3500);
 }
 
 // ── DRAG & DROP ──
@@ -1134,8 +1174,7 @@ uploadArea.addEventListener('drop', e => {
 });
 
 // ── INIT ──
-updateStats();
-renderProducts();
+loadProducts();
 loadTeksten();
 </script>
 </body>
