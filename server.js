@@ -1,25 +1,77 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const { Pool } = require('pg');
 const app = express();
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(__dirname));
 
-// ─── PRODUCTS FILE ───────────────────────────────────────────────────
-const PRODUCTS_FILE = path.join(__dirname, 'products.json');
+// ─── DATABASE ────────────────────────────────────────────────────────
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL && process.env.DATABASE_URL.includes('railway.internal')
+    ? false
+    : { rejectUnauthorized: false },
+});
 
-function readProducts() {
-  if (!fs.existsSync(PRODUCTS_FILE)) return [];
-  try { return JSON.parse(fs.readFileSync(PRODUCTS_FILE, 'utf8')); }
-  catch(e) { return []; }
+const DEFAULT_PRODUCTS = [
+  // Espresso
+  { name: 'Espresso Classico',     price: 2.50,  description: 'Krachtig, vol en romig — de perfecte klassieke espresso.',                    category: 'espresso',    image_url: null },
+  { name: 'Espresso Doppio',       price: 3.50,  description: 'Dubbele espresso voor de echte koffieliefhebber, intens van smaak.',           category: 'espresso',    image_url: null },
+  { name: 'Ristretto',             price: 2.75,  description: 'Korte, geconcentreerde espresso met een rijke, zoete smaak.',                  category: 'espresso',    image_url: null },
+  { name: 'Lungo',                 price: 2.75,  description: 'Verlengde espresso, licht van smaak en perfect voor een rustig moment.',       category: 'espresso',    image_url: null },
+  // Cappuccino
+  { name: 'Cappuccino Classico',   price: 3.50,  description: 'Gelijke delen espresso, gestoomde melk en romige melkschuim.',                 category: 'cappuccino',  image_url: null },
+  { name: 'Cappuccino Dry',        price: 3.50,  description: 'Cappuccino met extra veel luchtig schuim en minder melk.',                     category: 'cappuccino',  image_url: null },
+  { name: 'Cappuccino Wet',        price: 3.50,  description: 'Cappuccino met meer gestoomde melk voor een zachtere smaak.',                  category: 'cappuccino',  image_url: null },
+  { name: 'Iced Cappuccino',       price: 4.25,  description: 'Verfrissende koude cappuccino over ijs — perfect voor warme dagen.',           category: 'cappuccino',  image_url: null },
+  // Latte
+  { name: 'Caffè Latte',           price: 4.00,  description: 'Zachte espresso met veel gestoomde melk en een dun laagje schuim.',            category: 'latte',       image_url: null },
+  { name: 'Latte Macchiato',       price: 4.25,  description: 'Gelaagde drank van gestoomde melk met een shot espresso.',                    category: 'latte',       image_url: null },
+  { name: 'Vanilla Latte',         price: 4.50,  description: 'Romige latte met een vleugje vanille — zoet en verwennend.',                  category: 'latte',       image_url: null },
+  { name: 'Caramel Latte',         price: 4.75,  description: 'Latte met huisgemaakte karamelsaus — een zoete verwennerij.',                 category: 'latte',       image_url: null },
+  // Specialties
+  { name: 'Flat White',            price: 4.00,  description: 'Australische klassieker — ristretto met zijdezachte microfoam.',               category: 'specialties', image_url: null },
+  { name: 'Cortado',               price: 3.75,  description: 'Espresso gesneden met een gelijke hoeveelheid warme melk.',                   category: 'specialties', image_url: null },
+  { name: 'Affogato',              price: 5.50,  description: 'Vanille-ijs overgoten met een hete espresso — dessert en koffie in één.',     category: 'specialties', image_url: null },
+  { name: 'Cold Brew',             price: 5.00,  description: '12 uur koud gebrouwen koffie — glad, zoet en verfrissend.',                   category: 'specialties', image_url: null },
+];
+
+async function initDatabase() {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS products (
+        id          SERIAL PRIMARY KEY,
+        name        VARCHAR(255) NOT NULL,
+        price       DECIMAL(10, 2) NOT NULL,
+        description TEXT,
+        category    VARCHAR(100),
+        image_url   VARCHAR(255),
+        created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    const { rows } = await client.query('SELECT COUNT(*) FROM products');
+    if (parseInt(rows[0].count, 10) === 0) {
+      for (const p of DEFAULT_PRODUCTS) {
+        await client.query(
+          'INSERT INTO products (name, price, description, category, image_url) VALUES ($1, $2, $3, $4, $5)',
+          [p.name, p.price, p.description, p.category, p.image_url]
+        );
+      }
+      console.log('Standaard producten ingevoegd in database.');
+    }
+
+    console.log('Database klaar.');
+  } finally {
+    client.release();
+  }
 }
 
-function writeProducts(products) {
-  fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(products, null, 2));
-}
-
-// ─── ORDERS FILE ────────────────────────────────────────────────────
+// ─── ORDERS FILE (JSON — blijft voor nu) ────────────────────────────
 const ORDERS_FILE = path.join(__dirname, 'orders.json');
 
 function readOrders() {
@@ -37,32 +89,56 @@ app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
 app.get('/admin', (req, res) => res.sendFile(__dirname + '/admin.html'));
 
 // ─── PRODUCTS API ────────────────────────────────────────────────────
-app.get('/api/products', (req, res) => {
-  res.json(readProducts());
+app.get('/api/products', async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM products ORDER BY category, id');
+    res.json(rows);
+  } catch (err) {
+    console.error('GET /api/products fout:', err.message);
+    res.status(500).json({ error: 'Database fout' });
+  }
 });
 
-app.post('/api/products', (req, res) => {
-  const products = readProducts();
-  const newProduct = { id: Date.now().toString(), ...req.body };
-  products.push(newProduct);
-  writeProducts(products);
-  res.json(newProduct);
+app.post('/api/products', async (req, res) => {
+  try {
+    const { name, price, description, category, image_url } = req.body;
+    const { rows } = await pool.query(
+      'INSERT INTO products (name, price, description, category, image_url) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [name, price, description || null, category || null, image_url || null]
+    );
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('POST /api/products fout:', err.message);
+    res.status(500).json({ error: 'Database fout' });
+  }
 });
 
-app.put('/api/products/:id', (req, res) => {
-  const products = readProducts();
-  const index = products.findIndex(p => p.id === req.params.id);
-  if (index === -1) return res.status(404).json({ error: 'Product niet gevonden' });
-  products[index] = { ...products[index], ...req.body };
-  writeProducts(products);
-  res.json(products[index]);
+app.put('/api/products/:id', async (req, res) => {
+  try {
+    const { name, price, description, category, image_url } = req.body;
+    const { rows } = await pool.query(
+      `UPDATE products
+         SET name = $1, price = $2, description = $3, category = $4, image_url = $5, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $6
+       RETURNING *`,
+      [name, price, description || null, category || null, image_url || null, req.params.id]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Product niet gevonden' });
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('PUT /api/products/:id fout:', err.message);
+    res.status(500).json({ error: 'Database fout' });
+  }
 });
 
-app.delete('/api/products/:id', (req, res) => {
-  let products = readProducts();
-  products = products.filter(p => p.id !== req.params.id);
-  writeProducts(products);
-  res.json({ success: true });
+app.delete('/api/products/:id', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM products WHERE id = $1', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/products/:id fout:', err.message);
+    res.status(500).json({ error: 'Database fout' });
+  }
 });
 
 // ─── ORDERS API ──────────────────────────────────────────────────────
@@ -114,5 +190,14 @@ app.get('/betaling-succes', (req, res) => {
   res.send('<html><body style="background:#07070A;color:#F5F0E8;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center"><div><h1 style="color:#C9A84C">✅ Betaling geslaagd!</h1><p>Bedankt voor uw bestelling bij Koffie Palace.</p><a href="/" style="color:#C9A84C">← Terug</a></div></body></html>');
 });
 
+// ─── START ───────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log('Koffie Palace draait op poort ' + PORT));
+
+initDatabase()
+  .then(() => {
+    app.listen(PORT, () => console.log('Koffie Palace draait op poort ' + PORT));
+  })
+  .catch(err => {
+    console.error('Database initialisatie mislukt:', err.message);
+    process.exit(1);
+  });
