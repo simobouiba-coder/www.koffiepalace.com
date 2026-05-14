@@ -273,8 +273,8 @@ async function seedProducts(client) {
 }
 
 // ─── Middleware ──────────────────────────────────────────────────────────────
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Statische bestanden vanuit root (index.html, admin.html, css/, js/, images/)
 app.use(express.static(__dirname));
