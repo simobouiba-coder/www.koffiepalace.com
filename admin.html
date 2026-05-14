@@ -647,9 +647,9 @@ body {
     <div class="products-toolbar">
       <div class="filter-tabs">
         <button class="filter-tab active" onclick="filterProducts('all', this)">Alle</button>
-        <button class="filter-tab" onclick="filterProducts('bonen', this)">☕ Koffiebonen</button>
-        <button class="filter-tab" onclick="filterProducts('machine', this)">⚙️ Machines</button>
-        <button class="filter-tab" onclick="filterProducts('onderdeel', this)">🔧 Onderdelen</button>
+        <button class="filter-tab" onclick="filterProducts('beans', this)">☕ Koffiebonen</button>
+        <button class="filter-tab" onclick="filterProducts('machines', this)">⚙️ Machines</button>
+        <button class="filter-tab" onclick="filterProducts('onderdelen', this)">🔧 Onderdelen</button>
       </div>
     </div>
 
@@ -877,91 +877,63 @@ body {
 
 <script>
 // ── STATE ──
-let products = JSON.parse(localStorage.getItem('kp_products') || '[]');
+// Products are always loaded from and saved to the database.
+// No localStorage fallback for product data.
+let products = [];
 let editingId = null;
 let currentImgData = null;
 let currentFilter = 'all';
 
-// Preload default products
-if (products.length === 0) {
-  products = [
-    { id: 'esp',   cat: 'bonen',   emoji: '🫘', name: 'Espresso Classico',   sub: '500g · Krachtig & romig',        desc: 'Krachtig, vol en romig — de perfecte basis voor elke espresso.',              price: 14.95, badge: 'Bestseller', img: null },
-    { id: 'dark',  cat: 'bonen',   emoji: '🍫', name: 'Dark Roast',           sub: '500g · Diep geroosterd',         desc: 'Diep geroosterd met chocoladetonen, voor de echte koffieliefhebber.',           price: 15.95, badge: '',          img: null },
-    { id: 'milky', cat: 'bonen',   emoji: '🥛', name: 'Milky Blend',          sub: '500g · Zacht & romig',           desc: 'Speciaal gemengd voor cappuccino en latte — zacht en romig.',                  price: 13.95, badge: '',          img: null },
-    { id: 'decaf', cat: 'bonen',   emoji: '🍃', name: 'Decafé Deluxe',        sub: '500g · Cafeïnevrij',             desc: 'Cafeïnevrij maar vol van smaak — geniet zonder zorgen, op elk moment.',         price: 14.95, badge: 'Nieuw',     img: null },
-    { id: 'm1',    cat: 'machine', emoji: '☕', name: 'Espresso Pro 200',      sub: 'Halfautomaat · Voor thuis',      desc: 'De ideale halfautomaat voor thuis — eenvoudig en betrouwbaar.',                 price: 299.00, badge: '',         img: null },
-    { id: 'm2',    cat: 'machine', emoji: '⚙️', name: 'Volautomaat Palace X1', sub: 'Volautomaat · Kantoor & horeca', desc: 'Krachtige volautomaat voor druk gebruik op kantoor of in de horeca.',          price: 749.00, badge: 'Populair', img: null },
-    { id: 'm3',    cat: 'machine', emoji: '🏆', name: 'Barista Elite 3000',    sub: 'Professioneel · Horeca',         desc: 'Professionele espressomachine van horecakwaliteit.',                           price: 1499.00, badge: '',        img: null },
-    { id: 'm4',    cat: 'machine', emoji: '💎', name: 'Capsule Compact Mini',  sub: 'Capsule · Compact & snel',       desc: 'Compacte capsulemachine — perfect voor kleine keukens.',                       price: 129.00, badge: '',         img: null },
-    { id: 'm5',    cat: 'machine', emoji: '🔩', name: 'Palace Grinder Pro',    sub: 'Koffiemolen · Versgemalen',      desc: 'Versgemalen bonen voor de beste smaak — stille en precieze molen.',            price: 189.00, badge: '',         img: null },
-    { id: 'm6',    cat: 'machine', emoji: '🌟', name: 'Smart Touch 5000',      sub: 'Touchscreen · WiFi · App',       desc: 'Bedien je koffieapparaat via de app — modern en slim.',                        price: 999.00, badge: 'Nieuw',    img: null },
-  ];
-  saveToStorage();
-}
-
-async function saveToStorage() {
-  updateStats();
-  // Also sync to server
-}
-
+// ── STATS ──
 function updateStats() {
-  const machines  = products.filter(p => p.cat === 'machine');
-  const bonen     = products.filter(p => p.cat === 'bonen');
-  const onderdelen = products.filter(p => p.cat === 'onderdeel');
-  document.getElementById('stat-products').textContent  = products.length;
-  document.getElementById('stat-machines').textContent  = machines.length;
-  document.getElementById('stat-bonen').textContent     = bonen.length;
+  const machines   = products.filter(p => p.cat === 'machines');
+  const bonen      = products.filter(p => p.cat === 'beans');
+  const onderdelen = products.filter(p => p.cat === 'onderdelen');
+  document.getElementById('stat-products').textContent   = products.length;
+  document.getElementById('stat-machines').textContent   = machines.length;
+  document.getElementById('stat-bonen').textContent      = bonen.length;
   document.getElementById('stat-onderdelen').textContent = onderdelen.length;
-  document.getElementById('stat-orders').textContent    = '—';
+  document.getElementById('stat-orders').textContent     = '—';
 }
 
+// ── TEKSTEN ──
 async function saveTeksten() {
   const teksten = {
-    heroTitle:       document.getElementById('t-hero-title').value,
-    heroSub:         document.getElementById('t-hero-sub').value,
-    heroBtn:         document.getElementById('t-hero-btn').value,
-    aboutTitle:      document.getElementById('t-about-title').value,
-    aboutText:       document.getElementById('t-about-text').value,
-    stat1Num:        document.getElementById('t-stat1-num').value,
-    stat1Lbl:        document.getElementById('t-stat1-lbl').value,
-    stat2Num:        document.getElementById('t-stat2-num').value,
-    stat2Lbl:        document.getElementById('t-stat2-lbl').value,
-    telefoon:        document.getElementById('t-telefoon').value,
-    email:           document.getElementById('t-email').value,
-    adres:           document.getElementById('t-adres').value,
-    openingstijden:  document.getElementById('t-openingstijden').value,
-    offerteTitle:    document.getElementById('t-offerte-title').value,
-    offerteSub:      document.getElementById('t-offerte-sub').value,
-    offerteBtn:      document.getElementById('t-offerte-btn').value,
+    heroTitle:      document.getElementById('t-hero-title').value,
+    heroSub:        document.getElementById('t-hero-sub').value,
+    heroBtn:        document.getElementById('t-hero-btn').value,
+    aboutTitle:     document.getElementById('t-about-title').value,
+    aboutText:      document.getElementById('t-about-text').value,
+    stat1Num:       document.getElementById('t-stat1-num').value,
+    stat1Lbl:       document.getElementById('t-stat1-lbl').value,
+    stat2Num:       document.getElementById('t-stat2-num').value,
+    stat2Lbl:       document.getElementById('t-stat2-lbl').value,
+    telefoon:       document.getElementById('t-telefoon').value,
+    email:          document.getElementById('t-email').value,
+    adres:          document.getElementById('t-adres').value,
+    openingstijden: document.getElementById('t-openingstijden').value,
+    offerteTitle:   document.getElementById('t-offerte-title').value,
+    offerteSub:     document.getElementById('t-offerte-sub').value,
+    offerteBtn:     document.getElementById('t-offerte-btn').value,
   };
   localStorage.setItem('kp_teksten', JSON.stringify(teksten));
-  try {
-    await fetch('/api/teksten', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(teksten)
-    });
-    showToast('✅ Teksten opgeslagen en zichtbaar op de site!');
-  } catch(e) {
-    showToast('✅ Teksten lokaal opgeslagen');
-  }
+  showToast('✅ Teksten opgeslagen');
 }
 
-// Load saved teksten
 function loadTeksten() {
   const saved = localStorage.getItem('kp_teksten');
   if (!saved) return;
   const t = JSON.parse(saved);
+  const map = {
+    heroTitle: 't-hero-title', heroSub: 't-hero-sub', heroBtn: 't-hero-btn',
+    aboutTitle: 't-about-title', aboutText: 't-about-text',
+    stat1Num: 't-stat1-num', stat1Lbl: 't-stat1-lbl',
+    stat2Num: 't-stat2-num', stat2Lbl: 't-stat2-lbl',
+    telefoon: 't-telefoon', email: 't-email', adres: 't-adres',
+    openingstijden: 't-openingstijden',
+    offerteTitle: 't-offerte-title', offerteSub: 't-offerte-sub', offerteBtn: 't-offerte-btn',
+  };
   Object.entries(t).forEach(([key, val]) => {
-    const map = {
-      heroTitle: 't-hero-title', heroSub: 't-hero-sub', heroBtn: 't-hero-btn',
-      aboutTitle: 't-about-title', aboutText: 't-about-text',
-      stat1Num: 't-stat1-num', stat1Lbl: 't-stat1-lbl',
-      stat2Num: 't-stat2-num', stat2Lbl: 't-stat2-lbl',
-      telefoon: 't-telefoon', email: 't-email', adres: 't-adres',
-      openingstijden: 't-openingstijden',
-      offerteTitle: 't-offerte-title', offerteSub: 't-offerte-sub', offerteBtn: 't-offerte-btn',
-    };
     const el = document.getElementById(map[key]);
     if (el) el.value = val;
   });
@@ -977,16 +949,48 @@ function showPage(name) {
   if (name === 'teksten') loadTeksten();
 }
 
+// ── LOAD PRODUCTS FROM DATABASE ──
+async function loadProducts() {
+  try {
+    const res = await fetch('/api/products');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+    // Normalise server rows into the local display format
+    products = rows.map(p => ({
+      id:       p.slug,
+      cat:      p.category,   // keep server category: 'beans' | 'machines' | 'onderdelen'
+      name:     p.name,
+      sub:      p.description || '',
+      desc:     p.description || '',
+      price:    parseFloat(p.price) || 0,
+      img:      p.image || null,
+      emoji:    p.category === 'beans' ? '☕' : p.category === 'machines' ? '⚙️' : '🔧',
+      badge:    p.featured ? 'Uitgelicht' : '',
+      featured: p.featured,
+      in_stock: p.in_stock,
+    }));
+  } catch (e) {
+    console.error('Producten laden mislukt:', e);
+    showToast('⚠️ Kon producten niet laden van de server');
+  }
+  updateStats();
+  renderProducts();
+}
+
 // ── RENDER PRODUCTS ──
 function renderProducts(filter) {
-  if (filter) currentFilter = filter;
+  if (filter !== undefined) currentFilter = filter;
   const grid = document.getElementById('products-grid');
-  const list = currentFilter === 'all' ? products : products.filter(p => p.cat === currentFilter);
+  const list = currentFilter === 'all'
+    ? products
+    : products.filter(p => p.cat === currentFilter);
 
   if (list.length === 0) {
     grid.innerHTML = `<div class="empty-state"><div class="empty-icon">📦</div><div class="empty-text">Geen producten gevonden.</div></div>`;
     return;
   }
+
+  const catLabel = { beans: '☕ Koffiebonen', machines: '⚙️ Machine', onderdelen: '🔧 Onderdeel' };
 
   grid.innerHTML = list.map(p => `
     <div class="product-card" id="card-${p.id}">
@@ -996,7 +1000,7 @@ function renderProducts(filter) {
         : `<div class="product-img-placeholder">${p.emoji}</div>`
       }
       <div class="product-body">
-        <div class="product-category">${p.cat === 'bonen' ? '☕ Koffiebonen' : p.cat === 'machine' ? '⚙️ Machine' : '🔧 Onderdeel'}</div>
+        <div class="product-category">${catLabel[p.cat] || p.cat}</div>
         <div class="product-name">${p.name}</div>
         <div class="product-desc">${p.sub}</div>
         <div class="product-price">€ ${p.price.toFixed(2).replace('.', ',')}</div>
@@ -1016,7 +1020,7 @@ function filterProducts(filter, btn) {
 }
 
 // ── MODAL ──
-function openModal(id) {
+function openModal() {
   editingId = null;
   currentImgData = null;
   document.getElementById('modal-title').textContent = 'Product toevoegen';
@@ -1037,8 +1041,10 @@ function editProduct(id) {
   if (!p) return;
   editingId = id;
   currentImgData = p.img;
+  // Map server category back to form value
+  const catFormVal = p.cat === 'beans' ? 'bonen' : p.cat === 'machines' ? 'machine' : 'onderdeel';
   document.getElementById('modal-title').textContent = 'Product bewerken';
-  document.getElementById('prod-cat').value   = p.cat;
+  document.getElementById('prod-cat').value   = catFormVal;
   document.getElementById('prod-emoji').value = p.emoji;
   document.getElementById('prod-name').value  = p.name;
   document.getElementById('prod-sub').value   = p.sub;
@@ -1073,70 +1079,70 @@ function handleImageUpload(e) {
   reader.readAsDataURL(file);
 }
 
+// ── SAVE PRODUCT TO DATABASE ──
 async function saveProduct() {
   const name  = document.getElementById('prod-name').value.trim();
   const price = parseFloat(document.getElementById('prod-price').value);
 
-  if (!name) { showToast('⚠️ Voer een productnaam in'); return; }
-  if (isNaN(price) || price <= 0) { showToast('⚠️ Voer een geldige prijs in'); return; }
+  if (!name)                        { showToast('⚠️ Voer een productnaam in'); return; }
+  if (isNaN(price) || price <= 0)   { showToast('⚠️ Voer een geldige prijs in'); return; }
 
-  const cat = document.getElementById('prod-cat').value;
+  const catForm  = document.getElementById('prod-cat').value;
+  const category = catForm === 'bonen' ? 'beans' : catForm === 'machine' ? 'machines' : 'onderdelen';
   const slugBase = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/, '');
-  const slug = editingId || (slugBase + '-' + Date.now());
+  const slug     = editingId || (slugBase + '-' + Date.now());
 
-  const prod = {
+  const payload = {
     slug,
-    category: cat === 'bonen' ? 'beans' : cat === 'machine' ? 'machines' : 'onderdelen',
+    category,
     name,
     description: document.getElementById('prod-desc').value.trim(),
     price,
-    image: currentImgData || null,
+    image:    currentImgData || null,
     in_stock: true,
     featured: false,
   };
 
-  // Save to server
   try {
     const isEdit = !!editingId;
     const url    = isEdit ? '/api/products/' + editingId : '/api/products';
     const method = isEdit ? 'PUT' : 'POST';
 
-    const res = await fetch(url, {
+    const res  = await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(prod)
+      body: JSON.stringify(payload),
     });
     const data = await res.json();
+
     if (res.ok) {
-      if (isEdit) {
-        const idx = products.findIndex(p => p.id === editingId);
-        if (idx !== -1) products[idx] = { ...products[idx], ...prod };
-        showToast('\u2705 Product bijgewerkt! Zichtbaar op de site.');
-      } else {
-        products.push({ ...prod, id: data.id || slug });
-        showToast('\u2705 Product toegevoegd! Direct zichtbaar op de site.');
-      }
-      saveToStorage();
+      showToast(isEdit
+        ? '✅ Product bijgewerkt! Direct zichtbaar op de site.'
+        : '✅ Product toegevoegd! Direct zichtbaar op de site.');
       closeModal();
-      renderProducts();
+      await loadProducts();   // refresh from DB — single source of truth
     } else {
-      showToast('\u26a0\ufe0f Fout: ' + (data.error || 'Onbekende fout'));
+      showToast('⚠️ Fout: ' + (data.error || 'Onbekende fout'));
     }
-  } catch(err) {
-    showToast('\u26a0\ufe0f Fout bij opslaan: ' + err.message);
+  } catch (err) {
+    showToast('⚠️ Fout bij opslaan: ' + err.message);
   }
 }
 
+// ── DELETE PRODUCT FROM DATABASE ──
 async function deleteProduct(id) {
   if (!confirm('Weet u zeker dat u dit product wilt verwijderen?')) return;
   try {
-    await fetch('/api/products/' + id, { method: 'DELETE' });
-    products = products.filter(p => p.id !== id);
-    saveToStorage();
-    renderProducts();
-    showToast('🗑️ Product verwijderd van de site');
-  } catch(err) {
-    showToast('⚠️ Fout bij verwijderen');
+    const res = await fetch('/api/products/' + id, { method: 'DELETE' });
+    if (res.ok) {
+      showToast('🗑️ Product verwijderd van de site');
+      await loadProducts();   // refresh from DB
+    } else {
+      const data = await res.json().catch(() => ({}));
+      showToast('⚠️ Verwijderen mislukt: ' + (data.error || res.status));
+    }
+  } catch (err) {
+    showToast('⚠️ Fout bij verwijderen: ' + err.message);
   }
 }
 
@@ -1145,7 +1151,7 @@ function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.style.display = 'block';
-  setTimeout(() => { t.style.display = 'none'; }, 3000);
+  setTimeout(() => { t.style.display = 'none'; }, 3500);
 }
 
 // ── DRAG & DROP ──
@@ -1170,30 +1176,7 @@ uploadArea.addEventListener('drop', e => {
 
 // ── INIT ──
 async function initAdmin() {
-  try {
-    const res = await fetch('/api/products');
-    if (res.ok) {
-      const serverProducts = await res.json();
-      if (serverProducts && serverProducts.length > 0) {
-        products = serverProducts.map(p => ({
-          id:    p.slug,
-          cat:   p.category === 'beans' ? 'bonen' : p.category === 'machines' ? 'machine' : 'onderdelen',
-          name:  p.name,
-          sub:   p.description || '',
-          desc:  p.description || '',
-          price: parseFloat(p.price) || 0,
-          img:   p.image || null,
-          emoji: p.category === 'beans' ? '☕' : p.category === 'machines' ? '⚙️' : '🔧',
-          active: p.in_stock,
-          featured: p.featured,
-        }));
-      }
-    }
-  } catch(e) {
-    console.log('Server niet bereikbaar - standaard producten gebruikt');
-  }
-  updateStats();
-  renderProducts();
+  await loadProducts();
   loadTeksten();
 }
 
