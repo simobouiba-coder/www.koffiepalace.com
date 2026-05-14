@@ -501,10 +501,10 @@ app.get('/health', async (req, res) => {
 
 // ─── Catch-all: stuur altijd index.html terug voor client-side routing ────────
 app.get('*', (req, res) => {
-  // Alleen voor niet-API, niet-bestand routes
-  if (!req.path.startsWith('/api/')) {
-    res.sendFile(path.join(__dirname, 'index.html'));
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ error: 'Endpoint niet gevonden' });
   }
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // ─── Start ───────────────────────────────────────────────────────────────────
