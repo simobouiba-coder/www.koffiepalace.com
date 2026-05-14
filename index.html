@@ -9,16 +9,16 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --black:       #07070A;
-    --deep:        #0E0C10;
-    --surface:     #141218;
-    --surface2:    #1C1920;
+    --black:       #1C1510;
+    --deep:        #231A12;
+    --surface:     #2C2018;
+    --surface2:    #362820;
     --gold:        #C9A84C;
     --gold-light:  #E2C47A;
-    --gold-dim:    rgba(201,168,76,0.18);
+    --gold-dim:    rgba(201,168,76,0.22);
     --white:       #F5F0E8;
-    --muted:       rgba(245,240,232,0.45);
-    --border:      rgba(201,168,76,0.15);
+    --muted:       rgba(245,240,232,0.55);
+    --border:      rgba(201,168,76,0.2);
   }
 
   html { scroll-behavior: smooth; }
@@ -772,7 +772,7 @@
   <div class="hero-pour"></div>
   <div class="hero-content">
     <div class="hero-badge">Particulier · Kantoor · Horeca · By Nadira Store</div>
-    <h1>Koffie<br><em>Palace</em></h1>
+    <h1>Koffie <em>Palace</em></h1>
     <div class="hero-divider"></div>
     <p class="hero-sub">Uw specialist in reparatie, onderhoud en verkoop van koffieapparaten — en de beste koffiebonen voor thuis, kantoor en horeca.</p>
     <div class="hero-cta">
@@ -2181,8 +2181,8 @@
 // KOFFIE PALACE — WINKELWAGEN JAVASCRIPT
 // ══════════════════════════════════════════════
 
-// ── Productcatalogus ──────────────────────────
-const catalog = {
+// ── Productcatalogus (geladen via API) ──────────────────────────
+let catalog = {
   esp:   { name: 'Espresso Classico',     emoji: '🫘', type: 'bonen',   prices: { '500g': 14.95, '1kg': 26.95 } },
   dark:  { name: 'Dark Roast',            emoji: '🍫', type: 'bonen',   prices: { '500g': 15.95, '1kg': 28.95 } },
   milky: { name: 'Milky Blend',           emoji: '🥛', type: 'bonen',   prices: { '500g': 13.95, '1kg': 24.95 } },
@@ -2199,6 +2199,28 @@ const catalog = {
   o4:    { name: 'Reinigingsproducten',   emoji: '🧼', type: 'onderdeel', price: 7.95 },
   o5:    { name: 'Portafilters & cups',   emoji: '☕', type: 'onderdeel', price: 12.95 },
 };
+
+// Laad producten uit admin via API en voeg toe aan catalog
+fetch('/api/products')
+  .then(r => r.json())
+  .then(products => {
+    products.forEach(p => {
+      const type = p.category === 'beans' ? 'bonen' : p.category === 'onderdelen' ? 'onderdeel' : 'machine';
+      catalog[p.slug || p.id] = {
+        name: p.name,
+        emoji: p.emoji || '☕',
+        type: type,
+        price: parseFloat(p.price) || 0,
+        prices: type === 'bonen' ? { '500g': parseFloat(p.price) || 0, '1kg': parseFloat((parseFloat(p.price) * 1.8).toFixed(2)) } : undefined,
+        subtitle: p.subtitle || p.description,
+        description: p.description,
+        label: p.label,
+        image: p.image,
+        in_stock: p.in_stock,
+      };
+    });
+  })
+  .catch(() => {});
 
 // ── Winkelwagen state ─────────────────────────
 // cart = { id: { qty: number, variant: '500g'|'1kg'|null } }
