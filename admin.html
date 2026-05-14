@@ -899,9 +899,9 @@ if (products.length === 0) {
   saveToStorage();
 }
 
-function saveToStorage() {
-  localStorage.setItem('kp_products', JSON.stringify(products));
+async function saveToStorage() {
   updateStats();
+  // Also sync to server
 }
 
 function updateStats() {
@@ -915,7 +915,7 @@ function updateStats() {
   document.getElementById('stat-orders').textContent    = '—';
 }
 
-function saveTeksten() {
+async function saveTeksten() {
   const teksten = {
     heroTitle:       document.getElementById('t-hero-title').value,
     heroSub:         document.getElementById('t-hero-sub').value,
@@ -935,7 +935,16 @@ function saveTeksten() {
     offerteBtn:      document.getElementById('t-offerte-btn').value,
   };
   localStorage.setItem('kp_teksten', JSON.stringify(teksten));
-  showToast('✅ Teksten opgeslagen!');
+  try {
+    await fetch('/api/teksten', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(teksten)
+    });
+    showToast('✅ Teksten opgeslagen en zichtbaar op de site!');
+  } catch(e) {
+    showToast('✅ Teksten lokaal opgeslagen');
+  }
 }
 
 // Load saved teksten
@@ -1064,45 +1073,71 @@ function handleImageUpload(e) {
   reader.readAsDataURL(file);
 }
 
-function saveProduct() {
+async function saveProduct() {
   const name  = document.getElementById('prod-name').value.trim();
   const price = parseFloat(document.getElementById('prod-price').value);
 
   if (!name) { showToast('⚠️ Voer een productnaam in'); return; }
   if (isNaN(price) || price <= 0) { showToast('⚠️ Voer een geldige prijs in'); return; }
 
+  const cat = document.getElementById('prod-cat').value;
+  const slugBase = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/, '');
+  const slug = editingId || (slugBase + '-' + Date.now());
+
   const prod = {
-    id:    editingId || 'p_' + Date.now(),
-    cat:   document.getElementById('prod-cat').value,
-    emoji: document.getElementById('prod-emoji').value || '📦',
+    slug,
+    category: cat === 'bonen' ? 'beans' : cat === 'machine' ? 'machines' : 'onderdelen',
     name,
-    sub:   document.getElementById('prod-sub').value.trim(),
-    desc:  document.getElementById('prod-desc').value.trim(),
+    description: document.getElementById('prod-desc').value.trim(),
     price,
-    badge: document.getElementById('prod-badge').value.trim(),
-    img:   currentImgData || null,
+    image: currentImgData || null,
+    in_stock: true,
+    featured: false,
   };
 
-  if (editingId) {
-    const idx = products.findIndex(p => p.id === editingId);
-    if (idx !== -1) products[idx] = prod;
-    showToast('✅ Product bijgewerkt!');
-  } else {
-    products.push(prod);
-    showToast('✅ Product toegevoegd!');
-  }
+  // Save to server
+  try {
+    const isEdit = !!editingId;
+    const url    = isEdit ? '/api/products/' + editingId : '/api/products';
+    const method = isEdit ? 'PUT' : 'POST';
 
-  saveToStorage();
-  closeModal();
-  renderProducts();
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(prod)
+    });
+    const data = await res.json();
+    if (res.ok) {
+      if (isEdit) {
+        const idx = products.findIndex(p => p.id === editingId);
+        if (idx !== -1) products[idx] = { ...products[idx], ...prod };
+        showToast('\u2705 Product bijgewerkt! Zichtbaar op de site.');
+      } else {
+        products.push({ ...prod, id: data.id || slug });
+        showToast('\u2705 Product toegevoegd! Direct zichtbaar op de site.');
+      }
+      saveToStorage();
+      closeModal();
+      renderProducts();
+    } else {
+      showToast('\u26a0\ufe0f Fout: ' + (data.error || 'Onbekende fout'));
+    }
+  } catch(err) {
+    showToast('\u26a0\ufe0f Fout bij opslaan: ' + err.message);
+  }
 }
 
-function deleteProduct(id) {
+async function deleteProduct(id) {
   if (!confirm('Weet u zeker dat u dit product wilt verwijderen?')) return;
-  products = products.filter(p => p.id !== id);
-  saveToStorage();
-  renderProducts();
-  showToast('🗑️ Product verwijderd');
+  try {
+    await fetch('/api/products/' + id, { method: 'DELETE' });
+    products = products.filter(p => p.id !== id);
+    saveToStorage();
+    renderProducts();
+    showToast('🗑️ Product verwijderd van de site');
+  } catch(err) {
+    showToast('⚠️ Fout bij verwijderen');
+  }
 }
 
 // ── TOAST ──
@@ -1134,9 +1169,35 @@ uploadArea.addEventListener('drop', e => {
 });
 
 // ── INIT ──
-updateStats();
-renderProducts();
-loadTeksten();
+async function initAdmin() {
+  try {
+    const res = await fetch('/api/products');
+    if (res.ok) {
+      const serverProducts = await res.json();
+      if (serverProducts && serverProducts.length > 0) {
+        products = serverProducts.map(p => ({
+          id:    p.slug,
+          cat:   p.category === 'beans' ? 'bonen' : p.category === 'machines' ? 'machine' : 'onderdelen',
+          name:  p.name,
+          sub:   p.description || '',
+          desc:  p.description || '',
+          price: parseFloat(p.price) || 0,
+          img:   p.image || null,
+          emoji: p.category === 'beans' ? '☕' : p.category === 'machines' ? '⚙️' : '🔧',
+          active: p.in_stock,
+          featured: p.featured,
+        }));
+      }
+    }
+  } catch(e) {
+    console.log('Server niet bereikbaar - standaard producten gebruikt');
+  }
+  updateStats();
+  renderProducts();
+  loadTeksten();
+}
+
+initAdmin();
 </script>
 </body>
 </html>
