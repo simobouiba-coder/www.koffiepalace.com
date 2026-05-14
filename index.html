@@ -2205,18 +2205,18 @@ fetch('/api/products')
   .then(r => r.json())
   .then(products => {
     products.forEach(p => {
-      const type = p.category === 'beans' ? 'bonen' : p.category === 'onderdelen' ? 'onderdeel' : 'machine';
-      catalog[p.slug || p.id] = {
+      const type = p.category === 'koffie' ? 'bonen' : p.category === 'onderdelen' ? 'onderdeel' : 'machine';
+      catalog[p.id] = {
         name: p.name,
         emoji: p.emoji || '☕',
         type: type,
         price: parseFloat(p.price) || 0,
-        prices: type === 'bonen' ? { '500g': parseFloat(p.price) || 0, '1kg': parseFloat((parseFloat(p.price) * 1.8).toFixed(2)) } : undefined,
-        subtitle: p.subtitle || p.description,
+        prices: type === 'bonen' ? { '500g': parseFloat(p.price) || 0, '1kg': (parseFloat(p.price) * 1.8) || 0 } : undefined,
+        subtitle: p.subtitle,
         description: p.description,
         label: p.label,
         image: p.image,
-        in_stock: p.in_stock,
+        stock: p.stock,
       };
     });
   })
@@ -2514,8 +2514,8 @@ async function placeOrder() {
       body: JSON.stringify(orderData)
     });
     const data = await res.json();
-    if (data.checkoutUrl) {
-      window.location.href = data.checkoutUrl;
+    if (data.paymentUrl || data.checkoutUrl) {
+      window.location.href = data.paymentUrl || data.checkoutUrl;
     } else {
       // Offline demo mode
       const email = document.getElementById('f-email').value;
