@@ -2,12 +2,64 @@ const express = require('express');
 const path = require('path');
 const { Pool } = require('pg');
 const { createMollieClient } = require('@mollie/api-client');
+const nodemailer = require('nodemailer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ─── Mollie client ───────────────────────────────────────────────────────────
 const mollie = createMollieClient({ apiKey: process.env.MOLLIE_API_KEY });
+
+// ─── Email transporter ──────────────────────────────────────────────────────
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || 'smtp.gmail.com',
+  port: parseInt(process.env.SMTP_PORT || '587'),
+  secure: false,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  }
+});
+
+async function sendOrderConfirmation(customer, items, total, orderNumber) {
+  if (!process.env.SMTP_USER) return; // skip als geen email config
+  try {
+    const itemsHtml = items.map(i =>
+      `<tr><td style="padding:8px;border-bottom:1px solid #333;">${i.name}${i.variant ? ' · ' + i.variant : ''} × ${i.qty}</td>
+       <td style="padding:8px;border-bottom:1px solid #333;text-align:right;">€ ${(i.price * i.qty).toFixed(2)}</td></tr>`
+    ).join('');
+
+    await transporter.sendMail({
+      from: `"Koffie Palace" <${process.env.SMTP_USER}>`,
+      to: customer.email,
+      bcc: process.env.SMTP_USER, // kopie naar jezelf
+      subject: `Bevestiging bestelling ${orderNumber} – Koffie Palace`,
+      html: `
+        <div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;background:#0a0a0a;color:#f5f0e8;padding:40px;">
+          <h1 style="color:#c9a84c;font-size:28px;margin-bottom:8px;">Koffie Palace</h1>
+          <p style="color:#888;margin-top:0;">Bestelling bevestigd</p>
+          <hr style="border-color:#333;margin:24px 0;">
+          <p>Beste ${customer.voornaam},</p>
+          <p>Bedankt voor uw bestelling! Wij hebben uw betaling ontvangen en gaan direct aan de slag.</p>
+          <h3 style="color:#c9a84c;">Bestelling ${orderNumber}</h3>
+          <table style="width:100%;border-collapse:collapse;">
+            ${itemsHtml}
+            <tr>
+              <td style="padding:12px 8px;font-weight:bold;color:#c9a84c;">Totaal incl. verzending</td>
+              <td style="padding:12px 8px;text-align:right;font-weight:bold;color:#c9a84c;">€ ${parseFloat(total).toFixed(2)}</td>
+            </tr>
+          </table>
+          <hr style="border-color:#333;margin:24px 0;">
+          <p style="color:#888;font-size:14px;">Vragen? Mail ons op <a href="mailto:${process.env.SMTP_USER}" style="color:#c9a84c;">${process.env.SMTP_USER}</a></p>
+          <p style="color:#888;font-size:12px;">© Koffie Palace · By Nadira Store · Nederland</p>
+        </div>
+      `
+    });
+    console.log('✅ Bevestigingsmail verstuurd naar', customer.email);
+  } catch (err) {
+    console.error('❌ Email fout:', err.message);
+  }
+}
 
 // ─── PostgreSQL connectie ────────────────────────────────────────────────────
 const pool = new Pool({
@@ -273,6 +325,17 @@ app.post('/api/webhook/mollie', async (req, res) => {
         UPDATE orders SET status = $1, payment = $2 WHERE order_number = $3
       `, [status, JSON.stringify({ mollie_id: molliePaymentId, status: payment.status }), orderNumber]);
       console.log(`Order ${orderNumber} status → ${status}`);
+
+      // Bevestigingsmail sturen bij betaald
+      if (status === 'paid') {
+        const { rows: orderRows } = await pool.query(
+          'SELECT * FROM orders WHERE order_number = $1', [orderNumber]
+        );
+        if (orderRows.length > 0) {
+          const order = orderRows[0];
+          await sendOrderConfirmation(order.customer, order.items, order.total, orderNumber);
+        }
+      }
     }
 
     res.sendStatus(200);
