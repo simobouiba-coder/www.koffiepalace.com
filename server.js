@@ -22,31 +22,43 @@ const transporter = nodemailer.createTransport({
 });
 
 async function sendOrderConfirmation(customer, items, total, orderNumber) {
-  if (!process.env.SMTP_USER) return; // skip als geen email config
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    console.warn('⚠️ SMTP niet geconfigureerd, mail overgeslagen');
+    return;
+  }
+  // customer kan JSON string of object zijn
+  if (typeof customer === 'string') {
+    try { customer = JSON.parse(customer); } catch(e) { customer = {}; }
+  }
+  if (typeof items === 'string') {
+    try { items = JSON.parse(items); } catch(e) { items = []; }
+  }
   try {
-    const itemsHtml = items.map(i =>
-      `<tr><td style="padding:8px;border-bottom:1px solid #333;">${i.name}${i.variant ? ' · ' + i.variant : ''} × ${i.qty}</td>
-       <td style="padding:8px;border-bottom:1px solid #333;text-align:right;">€ ${(i.price * i.qty).toFixed(2)}</td></tr>`
+    const itemsHtml = (items || []).map(i =>
+      `<tr>
+        <td style="padding:8px;border-bottom:1px solid #333;">${i.name}${i.variant ? ' · ' + i.variant : ''} × ${i.qty}</td>
+        <td style="padding:8px;border-bottom:1px solid #333;text-align:right;">€ ${(i.price * i.qty).toFixed(2)}</td>
+       </tr>`
     ).join('');
 
     await transporter.sendMail({
       from: `"Koffie Palace" <${process.env.SMTP_USER}>`,
       to: customer.email,
-      bcc: process.env.SMTP_USER, // kopie naar jezelf
+      bcc: process.env.SMTP_USER,
       subject: `Bevestiging bestelling ${orderNumber} – Koffie Palace`,
       html: `
         <div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;background:#0a0a0a;color:#f5f0e8;padding:40px;">
           <h1 style="color:#c9a84c;font-size:28px;margin-bottom:8px;">Koffie Palace</h1>
           <p style="color:#888;margin-top:0;">Bestelling bevestigd</p>
           <hr style="border-color:#333;margin:24px 0;">
-          <p>Beste ${customer.voornaam},</p>
+          <p>Beste ${customer.voornaam || ''},</p>
           <p>Bedankt voor uw bestelling! Wij hebben uw betaling ontvangen en gaan direct aan de slag.</p>
           <h3 style="color:#c9a84c;">Bestelling ${orderNumber}</h3>
           <table style="width:100%;border-collapse:collapse;">
             ${itemsHtml}
             <tr>
               <td style="padding:12px 8px;font-weight:bold;color:#c9a84c;">Totaal incl. verzending</td>
-              <td style="padding:12px 8px;text-align:right;font-weight:bold;color:#c9a84c;">€ ${parseFloat(total).toFixed(2)}</td>
+              <td style="padding:12px 8px;text-align:right;font-weight:bold;color:#c9a84c;">€ ${parseFloat(total || 0).toFixed(2)}</td>
             </tr>
           </table>
           <hr style="border-color:#333;margin:24px 0;">
@@ -255,48 +267,54 @@ app.post('/api/create-payment', async (req, res) => {
   try {
     const { amount, description, items, customer, shipping, method } = req.body;
 
-    if (!amount || !description) {
-      return res.status(400).json({ error: 'amount en description zijn verplicht' });
+    // Validatie
+    if (!amount || isNaN(parseFloat(amount))) {
+      return res.status(400).json({ error: 'amount is verplicht en moet een getal zijn' });
+    }
+    if (!description) {
+      return res.status(400).json({ error: 'description is verplicht' });
+    }
+    if (!customer || !customer.email) {
+      return res.status(400).json({ error: 'customer.email is verplicht' });
     }
 
-    const baseUrl = process.env.BASE_URL || `https://www.koffiepalace.nl`;
+    const baseUrl = process.env.BASE_URL || 'https://www.koffiepalace.nl';
     const orderNumber = 'KP-' + Date.now().toString(36).toUpperCase();
+    const amountValue = parseFloat(amount).toFixed(2);
+    const shippingCost = parseFloat(shipping?.cost || 0);
 
-    // Bewaar order in database eerst
+    // Bewaar order in database
     await pool.query(`
       INSERT INTO orders (order_number, customer, items, shipping, payment, subtotal, shipping_cost, total, status)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'pending')
     `, [
       orderNumber,
-      JSON.stringify(customer || {}),
+      JSON.stringify(customer),
       JSON.stringify(items || []),
       JSON.stringify(shipping || {}),
       JSON.stringify({ method: method || 'ideal', status: 'pending' }),
-      parseFloat(amount) - parseFloat(shipping?.cost || 0),
-      parseFloat(shipping?.cost || 0),
+      parseFloat(amount) - shippingCost,
+      shippingCost,
       parseFloat(amount)
     ]);
 
     // Mollie betaling aanmaken
     const payment = await mollie.payments.create({
-      amount: {
-        currency: 'EUR',
-        value: parseFloat(amount).toFixed(2)
-      },
-      description: description,
+      amount: { currency: 'EUR', value: amountValue },
+      description,
       redirectUrl: `${baseUrl}/betaling-succes.html?order=${orderNumber}`,
       webhookUrl: `${baseUrl}/api/webhook/mollie`,
       method: method || undefined,
-      metadata: {
-        orderNumber,
-        customer: JSON.stringify(customer || {})
-      }
+      metadata: { orderNumber, customerEmail: customer.email }
     });
 
-    // Mollie payment ID opslaan in order
-    await pool.query(`
-      UPDATE orders SET payment = $1 WHERE order_number = $2
-    `, [JSON.stringify({ method: method || 'ideal', mollie_id: payment.id, status: 'open' }), orderNumber]);
+    // Mollie payment ID opslaan
+    await pool.query(
+      `UPDATE orders SET payment = $1 WHERE order_number = $2`,
+      [JSON.stringify({ method: method || 'ideal', mollie_id: payment.id, status: 'open' }), orderNumber]
+    );
+
+    console.log(`✅ Betaling aangemaakt: ${orderNumber} → ${payment.id}`);
 
     res.json({
       success: true,
@@ -305,7 +323,7 @@ app.post('/api/create-payment', async (req, res) => {
     });
 
   } catch (err) {
-    console.error('POST /api/create-payment:', err);
+    console.error('POST /api/create-payment fout:', err);
     res.status(500).json({ error: 'Betaling aanmaken mislukt: ' + err.message });
   }
 });
@@ -320,19 +338,24 @@ app.post('/api/webhook/mollie', async (req, res) => {
     const orderNumber = payment.metadata?.orderNumber;
 
     if (orderNumber) {
-      const status = payment.status === 'paid' ? 'paid' : payment.status === 'failed' ? 'failed' : payment.status === 'canceled' ? 'cancelled' : 'pending';
-      await pool.query(`
-        UPDATE orders SET status = $1, payment = $2 WHERE order_number = $3
-      `, [status, JSON.stringify({ mollie_id: molliePaymentId, status: payment.status }), orderNumber]);
+      const status = payment.status === 'paid' ? 'paid'
+        : payment.status === 'failed' ? 'failed'
+        : payment.status === 'canceled' ? 'cancelled'
+        : 'pending';
+
+      await pool.query(
+        `UPDATE orders SET status = $1, payment = $2 WHERE order_number = $3`,
+        [status, JSON.stringify({ mollie_id: molliePaymentId, status: payment.status }), orderNumber]
+      );
       console.log(`Order ${orderNumber} status → ${status}`);
 
-      // Bevestigingsmail sturen bij betaald
+      // Bevestigingsmail bij betaald
       if (status === 'paid') {
-        const { rows: orderRows } = await pool.query(
+        const { rows } = await pool.query(
           'SELECT * FROM orders WHERE order_number = $1', [orderNumber]
         );
-        if (orderRows.length > 0) {
-          const order = orderRows[0];
+        if (rows.length > 0) {
+          const order = rows[0];
           await sendOrderConfirmation(order.customer, order.items, order.total, orderNumber);
         }
       }
