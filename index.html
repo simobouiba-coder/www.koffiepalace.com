@@ -2487,20 +2487,25 @@ async function placeOrder() {
     }
   });
 
+  const total = getTotal();
+  const customer = {
+    voornaam:   document.getElementById('f-voornaam').value,
+    achternaam: document.getElementById('f-achternaam').value,
+    straat:     document.getElementById('f-straat').value,
+    postcode:   document.getElementById('f-postcode').value,
+    stad:       document.getElementById('f-stad').value,
+    email:      document.getElementById('f-email').value,
+    telefoon:   document.getElementById('f-telefoon').value,
+  };
+
   const orderData = {
     items,
     shipping: { cost: shippingCost, carrier: 'DHL' },
-    total: getTotal(),
+    total,
+    amount: total.toFixed(2),
+    description: `Koffie Palace bestelling – ${customer.voornaam} ${customer.achternaam}`,
     method: selectedPay,
-    customer: {
-      voornaam:  document.getElementById('f-voornaam').value,
-      achternaam: document.getElementById('f-achternaam').value,
-      straat:    document.getElementById('f-straat').value,
-      postcode:  document.getElementById('f-postcode').value,
-      stad:      document.getElementById('f-stad').value,
-      email:     document.getElementById('f-email').value,
-      telefoon:  document.getElementById('f-telefoon').value,
-    }
+    customer
   };
 
   const btn = document.querySelector('#step-3 .shop-btn');
@@ -2514,19 +2519,20 @@ async function placeOrder() {
       body: JSON.stringify(orderData)
     });
     const data = await res.json();
-    if (data.paymentUrl || data.checkoutUrl) {
-      window.location.href = data.paymentUrl || data.checkoutUrl;
+    if (data.paymentUrl) {
+      window.location.href = data.paymentUrl;
+    } else if (data.error) {
+      document.getElementById('step3-err').textContent = 'Fout: ' + data.error;
+      document.getElementById('step3-err').style.display = 'block';
     } else {
       // Offline demo mode
-      const email = document.getElementById('f-email').value;
-      document.getElementById('confirm-email').textContent = email;
+      document.getElementById('confirm-email').textContent = customer.email;
       buildSummary('confirm-summary');
       goStep(4);
     }
   } catch (err) {
     // Offline demo mode - show confirmation
-    const email = document.getElementById('f-email').value;
-    document.getElementById('confirm-email').textContent = email;
+    document.getElementById('confirm-email').textContent = customer.email;
     buildSummary('confirm-summary');
     goStep(4);
   } finally {
