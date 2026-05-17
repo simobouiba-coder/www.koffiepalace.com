@@ -186,27 +186,47 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(__dirname));
 
 // ─── API: Producten ──────────────────────────────────────────────────────────
+// Helper: voeg admin-velden toe vanuit specs
+function enrichProduct(row) {
+  const s = row.specs || {};
+  return {
+    ...row,
+    subtitle: s.subtitle || '',
+    stock: s.stock !== undefined ? s.stock : 10,
+    sku: s.sku || '',
+    emoji: s.emoji || '☕',
+    label: s.label || '',
+  };
+}
+
 app.get('/api/products', async (req, res) => {
   try {
     const { category, featured } = req.query;
-    let query = 'SELECT * FROM products WHERE in_stock = true';
+    let query = 'SELECT * FROM products';
     const params = [];
-    if (category) { params.push(category); query += ` AND category = $${params.length}`; }
-    if (featured === 'true') query += ' AND featured = true';
+    const conditions = [];
+    if (category) { params.push(category); conditions.push(`category = $${params.length}`); }
+    if (featured === 'true') conditions.push('featured = true');
+    if (conditions.length) query += ' WHERE ' + conditions.join(' AND ');
     query += ' ORDER BY category, id';
     const { rows } = await pool.query(query, params);
-    res.json(rows);
+    res.json(rows.map(enrichProduct));
   } catch (err) {
     console.error('GET /api/products:', err);
     res.status(500).json({ error: 'Database fout' });
   }
 });
 
-app.get('/api/products/:slug', async (req, res) => {
+app.get('/api/products/:id', async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM products WHERE slug = $1', [req.params.slug]);
+    const param = req.params.id;
+    const isNumeric = /^\d+$/.test(param);
+    const { rows } = await pool.query(
+      isNumeric ? 'SELECT * FROM products WHERE id = $1' : 'SELECT * FROM products WHERE slug = $1',
+      [isNumeric ? parseInt(param) : param]
+    );
     if (rows.length === 0) return res.status(404).json({ error: 'Product niet gevonden' });
-    res.json(rows[0]);
+    res.json(enrichProduct(rows[0]));
   } catch (err) {
     res.status(500).json({ error: 'Database fout' });
   }
@@ -214,47 +234,97 @@ app.get('/api/products/:slug', async (req, res) => {
 
 app.post('/api/products', async (req, res) => {
   try {
-    const { slug, category, name, description, price, image, variants, specs, in_stock, featured } = req.body;
-    if (!slug || !category || !name) return res.status(400).json({ error: 'slug, category en name zijn verplicht' });
+    const { slug, category, name, subtitle, description, price, image, variants, specs, in_stock, featured, stock, sku, emoji, label } = req.body;
+    if (!category || !name) return res.status(400).json({ error: 'category en name zijn verplicht' });
+    // Genereer slug als die niet meegegeven is
+    const finalSlug = slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now();
+    // Sla extra admin-velden op in specs
+    const specsObj = typeof specs === 'object' ? specs : {};
+    if (subtitle) specsObj.subtitle = subtitle;
+    if (sku) specsObj.sku = sku;
+    if (emoji) specsObj.emoji = emoji;
+    if (label) specsObj.label = label;
+    if (stock !== undefined) specsObj.stock = parseInt(stock) || 0;
+
     const { rows } = await pool.query(`
       INSERT INTO products (slug, category, name, description, price, image, variants, specs, in_stock, featured)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *
-    `, [slug, category, name, description, price, image,
+    `, [finalSlug, category, name, description, price, image,
         variants ? JSON.stringify(variants) : null,
-        specs ? JSON.stringify(specs) : null,
+        Object.keys(specsObj).length ? JSON.stringify(specsObj) : null,
         in_stock !== false, featured || false]);
     res.status(201).json(rows[0]);
   } catch (err) {
     if (err.code === '23505') return res.status(409).json({ error: 'Slug bestaat al' });
-    res.status(500).json({ error: 'Database fout' });
+    console.error('POST /api/products:', err);
+    res.status(500).json({ error: 'Database fout: ' + err.message });
   }
 });
 
-app.put('/api/products/:slug', async (req, res) => {
+// PUT op ID (voor admin) of slug
+app.put('/api/products/:id', async (req, res) => {
   try {
-    const { category, name, description, price, image, variants, specs, in_stock, featured } = req.body;
+    const { category, name, subtitle, description, price, image, variants, specs, in_stock, featured, stock, sku, emoji, label } = req.body;
+    const param = req.params.id;
+    const isNumeric = /^\d+$/.test(param);
+
+    // Haal huidige specs op zodat we ze kunnen mergen
+    const current = await pool.query(
+      isNumeric ? 'SELECT specs FROM products WHERE id = $1' : 'SELECT specs FROM products WHERE slug = $1',
+      [param]
+    );
+    if (current.rows.length === 0) return res.status(404).json({ error: 'Product niet gevonden' });
+
+    const currentSpecs = current.rows[0].specs || {};
+    const specsObj = typeof specs === 'object' && specs !== null ? { ...currentSpecs, ...specs } : { ...currentSpecs };
+    if (subtitle !== undefined) specsObj.subtitle = subtitle;
+    if (sku !== undefined) specsObj.sku = sku;
+    if (emoji !== undefined) specsObj.emoji = emoji;
+    if (label !== undefined) specsObj.label = label;
+    if (stock !== undefined) specsObj.stock = parseInt(stock) || 0;
+
+    const whereClause = isNumeric ? 'WHERE id = $10' : 'WHERE slug = $10';
     const { rows } = await pool.query(`
       UPDATE products SET
-        category = COALESCE($1, category), name = COALESCE($2, name),
-        description = COALESCE($3, description), price = COALESCE($4, price),
-        image = COALESCE($5, image), variants = COALESCE($6, variants),
-        specs = COALESCE($7, specs), in_stock = COALESCE($8, in_stock),
+        category = COALESCE($1, category),
+        name = COALESCE($2, name),
+        description = COALESCE($3, description),
+        price = COALESCE($4, price),
+        image = COALESCE($5, image),
+        variants = COALESCE($6, variants),
+        specs = $7,
+        in_stock = COALESCE($8, in_stock),
         featured = COALESCE($9, featured)
-      WHERE slug = $10 RETURNING *
+      ${whereClause} RETURNING *
     `, [category, name, description, price, image,
         variants ? JSON.stringify(variants) : null,
-        specs ? JSON.stringify(specs) : null,
-        in_stock, featured, req.params.slug]);
+        JSON.stringify(specsObj),
+        in_stock, featured,
+        isNumeric ? parseInt(param) : param]);
+
     if (rows.length === 0) return res.status(404).json({ error: 'Product niet gevonden' });
-    res.json(rows[0]);
+    // Voeg extra velden toe aan response zodat admin ze terug krijgt
+    const row = rows[0];
+    row.subtitle = row.specs?.subtitle || '';
+    row.stock = row.specs?.stock || 0;
+    row.sku = row.specs?.sku || '';
+    row.emoji = row.specs?.emoji || '';
+    row.label = row.specs?.label || '';
+    res.json(row);
   } catch (err) {
-    res.status(500).json({ error: 'Database fout' });
+    console.error('PUT /api/products:', err);
+    res.status(500).json({ error: 'Database fout: ' + err.message });
   }
 });
 
-app.delete('/api/products/:slug', async (req, res) => {
+app.delete('/api/products/:id', async (req, res) => {
   try {
-    const { rowCount } = await pool.query('DELETE FROM products WHERE slug = $1', [req.params.slug]);
+    const param = req.params.id;
+    const isNumeric = /^\d+$/.test(param);
+    const { rowCount } = await pool.query(
+      isNumeric ? 'DELETE FROM products WHERE id = $1' : 'DELETE FROM products WHERE slug = $1',
+      [isNumeric ? parseInt(param) : param]
+    );
     if (rowCount === 0) return res.status(404).json({ error: 'Product niet gevonden' });
     res.json({ success: true });
   } catch (err) {
