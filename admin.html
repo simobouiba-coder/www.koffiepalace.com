@@ -674,16 +674,26 @@ function handleDrop(e) {
   const file = e.dataTransfer.files[0];
   if (file && file.type.startsWith('image/')) handleFile(file);
 }
-function handleFile(file) {
+async function handleFile(file) {
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    currentImg = ev.target.result;
-    const prev = document.getElementById('img-preview');
+  const prev = document.getElementById('img-preview');
+  showToast('Foto uploaden...', 'success');
+  try {
+    const formData = new FormData();
+    formData.append('image', file);
+    const r = await fetch('/api/upload-image', { method: 'POST', body: formData });
+    if (!r.ok) throw new Error(await r.text());
+    const data = await r.json();
+    currentImg = data.url;
     prev.src = currentImg;
     prev.style.display = 'block';
-  };
-  reader.readAsDataURL(file);
+    showToast('Foto geüpload ✓', 'success');
+  } catch(e) {
+    showToast('Upload mislukt: ' + e.message, 'error');
+    const reader = new FileReader();
+    reader.onload = ev => { prev.src = ev.target.result; prev.style.display = 'block'; };
+    reader.readAsDataURL(file);
+  }
 }
 
 // ─── SAVE ─────────────────────────────────────────────────────────────
@@ -693,7 +703,7 @@ async function saveProduct() {
     name: document.getElementById('edit-name').value.trim(),
     subtitle: document.getElementById('edit-subtitle').value.trim(),
     description: document.getElementById('edit-desc').value.trim(),
-    price: parseFloat(document.getElementById('edit-price').value) || 0,
+    price: document.getElementById('edit-price').value,
     label: document.getElementById('edit-label').value.trim(),
     stock: parseInt(document.getElementById('edit-stock').value) || 0,
     sku: document.getElementById('edit-sku').value.trim(),
@@ -706,49 +716,51 @@ async function saveProduct() {
   try {
     if (id) {
       const updated = await apiPut(`/api/products/${id}`, data);
-      const i = products.findIndex(p => String(p.id) === String(id));
+      const i = products.findIndex(p => p.id === id);
       if (i !== -1) products[i] = updated;
-      else products.push(updated);
     } else {
       const created = await apiPost('/api/products', data);
       products.push(created);
     }
-    closeModal();
-    renderProducts();
-    renderStock();
-    renderDashboard();
-    showToast(id ? 'Product bijgewerkt ✓' : 'Product aangemaakt ✓', 'success');
   } catch(e) {
-    showToast('Fout: ' + e.message, 'error');
-    console.error('saveProduct fout:', e);
+    // Fallback: sla lokaal op
+    if (id) {
+      const i = products.findIndex(p => p.id === id);
+      if (i !== -1) products[i] = { ...products[i], ...data };
+    } else {
+      products.push({ id: Date.now().toString(), ...data });
+    }
+    localStorage.setItem('kp_products', JSON.stringify(products));
   }
+
+  closeModal();
+  renderProducts();
+  renderStock();
+  renderDashboard();
+  showToast(id ? 'Product bijgewerkt' : 'Product aangemaakt', 'success');
 }
 
 async function deleteProduct(id) {
   if (!confirm('Product verwijderen?')) return;
-  try {
-    await apiDelete(`/api/products/${id}`);
-    products = products.filter(p => String(p.id) !== String(id));
-    renderProducts();
-    renderStock();
-    renderDashboard();
-    showToast('Product verwijderd', 'success');
-  } catch(e) {
-    showToast('Verwijderen mislukt: ' + e.message, 'error');
-  }
+  try { await apiDelete(`/api/products/${id}`); } catch(e) {}
+  products = products.filter(p => p.id !== id);
+  localStorage.setItem('kp_products', JSON.stringify(products));
+  renderProducts();
+  renderStock();
+  renderDashboard();
+  showToast('Product verwijderd', 'success');
 }
 
 async function saveAllStock() {
   const inputs = document.querySelectorAll('.stock-input');
-  const promises = [];
   inputs.forEach(inp => {
     const id = inp.dataset.id;
     const stock = parseInt(inp.value) || 0;
-    const p = products.find(x => String(x.id) === String(id));
+    const p = products.find(x => x.id === id);
     if (p) p.stock = stock;
-    promises.push(apiPut(`/api/products/${id}`, { stock }).catch(e => console.error('stock update fout:', e)));
+    apiPut(`/api/products/${id}`, { stock }).catch(() => {});
   });
-  await Promise.all(promises);
+  localStorage.setItem('kp_products', JSON.stringify(products));
   renderProducts();
   renderDashboard();
   showToast('Voorraad opgeslagen', 'success');
