@@ -3,6 +3,18 @@ const path = require('path');
 const { Pool } = require('pg');
 const { createMollieClient } = require('@mollie/api-client');
 const nodemailer = require('nodemailer');
+const multer = require('multer');
+const cloudinary = require('cloudinary').v2;
+const { Readable } = require('stream');
+
+// ─── Cloudinary config ───────────────────────────────────────────────────────
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key:    process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -186,47 +198,27 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(__dirname));
 
 // ─── API: Producten ──────────────────────────────────────────────────────────
-// Helper: voeg admin-velden toe vanuit specs
-function enrichProduct(row) {
-  const s = row.specs || {};
-  return {
-    ...row,
-    subtitle: s.subtitle || '',
-    stock: s.stock !== undefined ? s.stock : 10,
-    sku: s.sku || '',
-    emoji: s.emoji || '☕',
-    label: s.label || '',
-  };
-}
-
 app.get('/api/products', async (req, res) => {
   try {
     const { category, featured } = req.query;
-    let query = 'SELECT * FROM products';
+    let query = 'SELECT * FROM products WHERE in_stock = true';
     const params = [];
-    const conditions = [];
-    if (category) { params.push(category); conditions.push(`category = $${params.length}`); }
-    if (featured === 'true') conditions.push('featured = true');
-    if (conditions.length) query += ' WHERE ' + conditions.join(' AND ');
+    if (category) { params.push(category); query += ` AND category = $${params.length}`; }
+    if (featured === 'true') query += ' AND featured = true';
     query += ' ORDER BY category, id';
     const { rows } = await pool.query(query, params);
-    res.json(rows.map(enrichProduct));
+    res.json(rows);
   } catch (err) {
     console.error('GET /api/products:', err);
     res.status(500).json({ error: 'Database fout' });
   }
 });
 
-app.get('/api/products/:id', async (req, res) => {
+app.get('/api/products/:slug', async (req, res) => {
   try {
-    const param = req.params.id;
-    const isNumeric = /^\d+$/.test(param);
-    const { rows } = await pool.query(
-      isNumeric ? 'SELECT * FROM products WHERE id = $1' : 'SELECT * FROM products WHERE slug = $1',
-      [isNumeric ? parseInt(param) : param]
-    );
+    const { rows } = await pool.query('SELECT * FROM products WHERE slug = $1', [req.params.slug]);
     if (rows.length === 0) return res.status(404).json({ error: 'Product niet gevonden' });
-    res.json(enrichProduct(rows[0]));
+    res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: 'Database fout' });
   }
@@ -234,97 +226,47 @@ app.get('/api/products/:id', async (req, res) => {
 
 app.post('/api/products', async (req, res) => {
   try {
-    const { slug, category, name, subtitle, description, price, image, variants, specs, in_stock, featured, stock, sku, emoji, label } = req.body;
-    if (!category || !name) return res.status(400).json({ error: 'category en name zijn verplicht' });
-    // Genereer slug als die niet meegegeven is
-    const finalSlug = slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now();
-    // Sla extra admin-velden op in specs
-    const specsObj = typeof specs === 'object' ? specs : {};
-    if (subtitle) specsObj.subtitle = subtitle;
-    if (sku) specsObj.sku = sku;
-    if (emoji) specsObj.emoji = emoji;
-    if (label) specsObj.label = label;
-    if (stock !== undefined) specsObj.stock = parseInt(stock) || 0;
-
+    const { slug, category, name, description, price, image, variants, specs, in_stock, featured } = req.body;
+    if (!slug || !category || !name) return res.status(400).json({ error: 'slug, category en name zijn verplicht' });
     const { rows } = await pool.query(`
       INSERT INTO products (slug, category, name, description, price, image, variants, specs, in_stock, featured)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *
-    `, [finalSlug, category, name, description, price, image,
+    `, [slug, category, name, description, price, image,
         variants ? JSON.stringify(variants) : null,
-        Object.keys(specsObj).length ? JSON.stringify(specsObj) : null,
+        specs ? JSON.stringify(specs) : null,
         in_stock !== false, featured || false]);
     res.status(201).json(rows[0]);
   } catch (err) {
     if (err.code === '23505') return res.status(409).json({ error: 'Slug bestaat al' });
-    console.error('POST /api/products:', err);
-    res.status(500).json({ error: 'Database fout: ' + err.message });
+    res.status(500).json({ error: 'Database fout' });
   }
 });
 
-// PUT op ID (voor admin) of slug
-app.put('/api/products/:id', async (req, res) => {
+app.put('/api/products/:slug', async (req, res) => {
   try {
-    const { category, name, subtitle, description, price, image, variants, specs, in_stock, featured, stock, sku, emoji, label } = req.body;
-    const param = req.params.id;
-    const isNumeric = /^\d+$/.test(param);
-
-    // Haal huidige specs op zodat we ze kunnen mergen
-    const current = await pool.query(
-      isNumeric ? 'SELECT specs FROM products WHERE id = $1' : 'SELECT specs FROM products WHERE slug = $1',
-      [param]
-    );
-    if (current.rows.length === 0) return res.status(404).json({ error: 'Product niet gevonden' });
-
-    const currentSpecs = current.rows[0].specs || {};
-    const specsObj = typeof specs === 'object' && specs !== null ? { ...currentSpecs, ...specs } : { ...currentSpecs };
-    if (subtitle !== undefined) specsObj.subtitle = subtitle;
-    if (sku !== undefined) specsObj.sku = sku;
-    if (emoji !== undefined) specsObj.emoji = emoji;
-    if (label !== undefined) specsObj.label = label;
-    if (stock !== undefined) specsObj.stock = parseInt(stock) || 0;
-
-    const whereClause = isNumeric ? 'WHERE id = $10' : 'WHERE slug = $10';
+    const { category, name, description, price, image, variants, specs, in_stock, featured } = req.body;
     const { rows } = await pool.query(`
       UPDATE products SET
-        category = COALESCE($1, category),
-        name = COALESCE($2, name),
-        description = COALESCE($3, description),
-        price = COALESCE($4, price),
-        image = COALESCE($5, image),
-        variants = COALESCE($6, variants),
-        specs = $7,
-        in_stock = COALESCE($8, in_stock),
+        category = COALESCE($1, category), name = COALESCE($2, name),
+        description = COALESCE($3, description), price = COALESCE($4, price),
+        image = COALESCE($5, image), variants = COALESCE($6, variants),
+        specs = COALESCE($7, specs), in_stock = COALESCE($8, in_stock),
         featured = COALESCE($9, featured)
-      ${whereClause} RETURNING *
+      WHERE slug = $10 RETURNING *
     `, [category, name, description, price, image,
         variants ? JSON.stringify(variants) : null,
-        JSON.stringify(specsObj),
-        in_stock, featured,
-        isNumeric ? parseInt(param) : param]);
-
+        specs ? JSON.stringify(specs) : null,
+        in_stock, featured, req.params.slug]);
     if (rows.length === 0) return res.status(404).json({ error: 'Product niet gevonden' });
-    // Voeg extra velden toe aan response zodat admin ze terug krijgt
-    const row = rows[0];
-    row.subtitle = row.specs?.subtitle || '';
-    row.stock = row.specs?.stock || 0;
-    row.sku = row.specs?.sku || '';
-    row.emoji = row.specs?.emoji || '';
-    row.label = row.specs?.label || '';
-    res.json(row);
+    res.json(rows[0]);
   } catch (err) {
-    console.error('PUT /api/products:', err);
-    res.status(500).json({ error: 'Database fout: ' + err.message });
+    res.status(500).json({ error: 'Database fout' });
   }
 });
 
-app.delete('/api/products/:id', async (req, res) => {
+app.delete('/api/products/:slug', async (req, res) => {
   try {
-    const param = req.params.id;
-    const isNumeric = /^\d+$/.test(param);
-    const { rowCount } = await pool.query(
-      isNumeric ? 'DELETE FROM products WHERE id = $1' : 'DELETE FROM products WHERE slug = $1',
-      [isNumeric ? parseInt(param) : param]
-    );
+    const { rowCount } = await pool.query('DELETE FROM products WHERE slug = $1', [req.params.slug]);
     if (rowCount === 0) return res.status(404).json({ error: 'Product niet gevonden' });
     res.json({ success: true });
   } catch (err) {
@@ -332,6 +274,24 @@ app.delete('/api/products/:id', async (req, res) => {
   }
 });
 
+
+// ─── API: Foto uploaden naar Cloudinary ──────────────────────────────────────
+app.post("/api/upload-image", upload.single("image"), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "Geen bestand ontvangen" });
+    const result = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        { folder: "koffie-palace", resource_type: "image" },
+        (error, result) => error ? reject(error) : resolve(result)
+      );
+      Readable.from(req.file.buffer).pipe(stream);
+    });
+    res.json({ url: result.secure_url, public_id: result.public_id });
+  } catch (err) {
+    console.error("Upload fout:", err);
+    res.status(500).json({ error: "Upload mislukt: " + err.message });
+  }
+});
 // ─── API: Mollie betaling aanmaken ───────────────────────────────────────────
 app.post('/api/create-payment', async (req, res) => {
   try {
