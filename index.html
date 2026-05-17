@@ -2174,6 +2174,65 @@
     text-align: left;
   }
   .verder-winkelen-btn:hover { color: #C9A84C; border-color: #C9A84C; background: rgba(201,168,76,0.05); }
+
+  /* ── PRODUCT DETAIL POPUP ── */
+  .pd-overlay {
+    position: fixed; inset: 0; background: rgba(7,7,10,0.88);
+    display: none; align-items: center; justify-content: center;
+    z-index: 9000; padding: 1.5rem;
+  }
+  .pd-overlay.open { display: flex; }
+  .pd-modal {
+    background: #231A12; border: 1px solid rgba(201,168,76,0.3);
+    max-width: 680px; width: 100%; max-height: 90vh; overflow-y: auto;
+    display: flex; flex-direction: column;
+  }
+  .pd-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.25rem 1.5rem; border-bottom: 1px solid rgba(201,168,76,0.15);
+  }
+  .pd-close {
+    background: none; border: none; color: rgba(245,240,232,0.55);
+    font-size: 1.8rem; cursor: pointer; line-height: 1; padding: 0;
+  }
+  .pd-close:hover { color: #C9A84C; }
+  .pd-body { display: flex; gap: 2rem; padding: 1.5rem; }
+  .pd-img {
+    width: 220px; min-width: 220px; height: 220px;
+    object-fit: cover; background: #2C2018;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 4rem; flex-shrink: 0;
+  }
+  .pd-img img { width: 100%; height: 100%; object-fit: cover; }
+  .pd-info { flex: 1; }
+  .pd-label { font-size: 0.72rem; color: #C9A84C; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 0.5rem; }
+  .pd-name { font-family: 'Cormorant Garamond', serif; font-size: 1.8rem; color: #F5F0E8; margin-bottom: 0.5rem; font-weight: 600; }
+  .pd-subtitle { color: rgba(245,240,232,0.55); font-size: 0.9rem; margin-bottom: 1rem; }
+  .pd-desc { color: rgba(245,240,232,0.75); font-size: 0.9rem; line-height: 1.7; margin-bottom: 1.25rem; }
+  .pd-price { font-family: 'Cormorant Garamond', serif; font-size: 2rem; color: #C9A84C; margin-bottom: 1.25rem; }
+  .pd-footer { padding: 1.25rem 1.5rem; border-top: 1px solid rgba(201,168,76,0.15); display: flex; gap: 1rem; }
+  .pd-btn {
+    background: #C9A84C; color: #1C1510; border: none;
+    padding: 0.85rem 2rem; font-family: 'Jost', sans-serif;
+    font-size: 0.82rem; letter-spacing: 0.14em; text-transform: uppercase;
+    cursor: pointer; transition: background 0.2s; flex: 1;
+  }
+  .pd-btn:hover { background: #E2C47A; }
+  .pd-btn-outline {
+    background: transparent; border: 1px solid rgba(201,168,76,0.3);
+    color: rgba(245,240,232,0.65); padding: 0.85rem 1.5rem;
+    font-family: 'Jost', sans-serif; font-size: 0.82rem;
+    letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .pd-btn-outline:hover { border-color: #C9A84C; color: #C9A84C; }
+  @media (max-width: 600px) {
+    .pd-body { flex-direction: column; }
+    .pd-img { width: 100%; min-width: unset; }
+  }
+  /* Foto's in kaarten */
+  .bean-card-img { width: 100%; height: 140px; object-fit: cover; margin-bottom: 0.75rem; background: #2C2018; }
+  .mo-img-photo { width: 100%; height: 180px; object-fit: cover; }
 </style>
 
 <script>
@@ -2200,18 +2259,56 @@ let catalog = {
   o5:    { name: 'Portafilters & cups',   emoji: '☕', type: 'onderdeel', price: 12.95 },
 };
 
-// Laad producten uit database en update catalog + grids
+// Laad producten uit admin via API en voeg toe aan catalog
+// ── Product detail popup state ────────────────
+let pdCurrentId = null;
+
+function openPD(id) {
+  const p = catalog[id];
+  if (!p) return;
+  pdCurrentId = id;
+  const cat = p.type === 'bonen' ? 'Koffiebonen' : p.type === 'onderdeel' ? 'Onderdelen' : 'Koffiemachine';
+  document.getElementById('pd-cat-label').textContent = cat;
+  document.getElementById('pd-name').textContent = p.name;
+  document.getElementById('pd-subtitle').textContent = p.subtitle || '';
+  document.getElementById('pd-desc').textContent = p.description || '';
+  document.getElementById('pd-label').textContent = p.label || '';
+  document.getElementById('pd-emoji').textContent = p.emoji || '☕';
+  const price = p.type === 'bonen' ? (p.prices?.['500g'] || p.price) : p.price;
+  document.getElementById('pd-price').textContent = '€ ' + parseFloat(price).toFixed(2).replace('.', ',');
+  const imgWrap = document.getElementById('pd-img-wrap');
+  if (p.image) {
+    imgWrap.innerHTML = '<img src="' + p.image + '" alt="' + p.name + '" style="width:100%;height:220px;object-fit:cover;">';
+  } else {
+    imgWrap.innerHTML = '<span style="font-size:4rem">' + (p.emoji || '☕') + '</span>';
+  }
+  document.getElementById('pd-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closePD() {
+  document.getElementById('pd-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function pdAddToCart() {
+  const p = catalog[pdCurrentId];
+  if (!p) return;
+  const variant = p.type === 'bonen' ? '500g' : null;
+  addToCart(pdCurrentId, p.name, p.price, variant);
+  closePD();
+  openShop();
+}
+
+// Laad producten uit database
 fetch('/api/products')
   .then(r => r.json())
   .then(dbProducts => {
-    if (!dbProducts || dbProducts.length === 0) return;
-
-    // Update catalog met database producten
+    if (!dbProducts || !dbProducts.length) return;
     dbProducts.forEach(p => {
       const cat = (p.category || '').toLowerCase();
-      const type = cat === 'beans' || cat === 'koffie' ? 'bonen'
-                 : cat === 'onderdelen' ? 'onderdeel'
-                 : 'machine';
+      const type = (cat === 'beans' || cat === 'koffie') ? 'bonen'
+                 : cat === 'onderdelen' ? 'onderdeel' : 'machine';
       const price = parseFloat(p.price) || 0;
       catalog[p.id] = {
         name: p.name,
@@ -2227,63 +2324,50 @@ fetch('/api/products')
       };
     });
 
-    // Update beans grid als er bonen in de database zitten
-    const bonen = dbProducts.filter(p => {
-      const cat = (p.category || '').toLowerCase();
-      return cat === 'beans' || cat === 'koffie';
-    });
+    // Update beans grid
+    const bonen = dbProducts.filter(p => { const c = (p.category||'').toLowerCase(); return c === 'beans' || c === 'koffie'; });
     if (bonen.length > 0) {
-      const beansGrid = document.querySelector('.beans-grid');
-      if (beansGrid) {
-        beansGrid.innerHTML = bonen.map(p => {
+      const grid = document.querySelector('.beans-grid');
+      if (grid) {
+        grid.innerHTML = bonen.map(p => {
           const price = parseFloat(p.price) || 0;
-          return `
-            <div class="bean-card">
-              <span class="bean-emoji">${p.emoji || '🫘'}</span>
-              <h4>${p.name}</h4>
-              <p>${p.description || ''}</p>
-              <button class="bean-order-btn" onclick="addToCart('${p.id}','${p.name.replace(/'/g,"\\'")}',${price})">Bestellen</button>
-            </div>`;
+          const imgHtml = p.image
+            ? '<img src="' + p.image + '" alt="' + p.name + '" class="bean-card-img">'
+            : '<span class="bean-emoji">' + (p.emoji || '🫘') + '</span>';
+          return '<div class="bean-card" onclick="openPD(' + p.id + ')" style="cursor:pointer">'
+            + imgHtml
+            + '<h4>' + p.name + '</h4>'
+            + '<p>' + (p.description || '') + '</p>'
+            + '<button class="bean-order-btn" onclick="event.stopPropagation();addToCart(' + p.id + ','' + p.name.replace(/'/g,"\'") + '',' + price + ')">Bestellen</button>'
+            + '</div>';
         }).join('');
       }
     }
 
-    // Update machines grid als er machines in de database zitten
-    const machines = dbProducts.filter(p => {
-      const cat = (p.category || '').toLowerCase();
-      return cat === 'machines' || cat === 'machine';
-    });
+    // Update machines grid
+    const machines = dbProducts.filter(p => { const c = (p.category||'').toLowerCase(); return c === 'machines' || c === 'machine'; });
     if (machines.length > 0) {
-      const moGrid = document.getElementById('mo-grid');
-      if (moGrid) {
-        moGrid.innerHTML = machines.map(p => {
+      const grid = document.getElementById('mo-grid');
+      if (grid) {
+        grid.innerHTML = machines.map(p => {
           const price = parseFloat(p.price) || 0;
-          const priceStr = price.toLocaleString('nl-NL', { minimumFractionDigits: 2 });
+          const priceStr = price.toLocaleString('nl-NL', {minimumFractionDigits: 2});
           const specs = p.specs || {};
           const brand = specs.brand || '';
           const type = specs.type || '';
-          const cat = (p.category || '').toLowerCase();
-          const dataCat = cat.includes('horeca') ? 'horeca' : cat.includes('zakelijk') ? 'zakelijk' : 'thuis';
-          const tagLabel = dataCat === 'horeca' ? '🏆 Horeca kwaliteit'
-                         : dataCat === 'zakelijk' ? '🏢 Zakelijk & kantoor'
-                         : '🏠 Voor thuis';
-          return `
-            <div class="mo-card" data-cat="${dataCat}">
-              <div class="mo-img-box">${p.emoji || '☕'}</div>
-              <div class="mo-body">
-                <div class="mo-tag">${tagLabel}</div>
-                <h3 class="mo-name">${p.name}</h3>
-                <p class="mo-desc">${p.description || ''}</p>
-                ${brand || type ? `<ul class="mo-specs">
-                  ${brand ? `<li>🏷️ Merk: ${brand}</li>` : ''}
-                  ${type ? `<li>☕ Type: ${type}</li>` : ''}
-                </ul>` : ''}
-                <div class="mo-footer">
-                  <div class="mo-price">€ ${priceStr}</div>
-                  <button class="mo-cart-btn" onclick="addToCart('${p.id}','${p.name.replace(/'/g,"\\'")}',${price})">🛒 In winkelwagen</button>
-                </div>
-              </div>
-            </div>`;
+          const imgHtml = p.image
+            ? '<img src="' + p.image + '" alt="' + p.name + '" class="mo-img-photo">'
+            : '<div class="mo-img-box">' + (p.emoji || '☕') + '</div>';
+          return '<div class="mo-card" data-cat="alle" onclick="openPD(' + p.id + ')" style="cursor:pointer">'
+            + imgHtml
+            + '<div class="mo-body">'
+            + '<h3 class="mo-name">' + p.name + '</h3>'
+            + (p.description ? '<p class="mo-desc">' + p.description + '</p>' : '')
+            + (brand || type ? '<ul class="mo-specs">' + (brand ? '<li>🏷️ ' + brand + '</li>' : '') + (type ? '<li>☕ ' + type + '</li>' : '') + '</ul>' : '')
+            + '<div class="mo-footer">'
+            + '<div class="mo-price">€ ' + priceStr + '</div>'
+            + '<button class="mo-cart-btn" onclick="event.stopPropagation();addToCart(' + p.id + ','' + p.name.replace(/'/g,"\'") + '',' + price + ')">🛒 In winkelwagen</button>'
+            + '</div></div></div>';
         }).join('');
       }
     }
