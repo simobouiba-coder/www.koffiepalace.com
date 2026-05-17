@@ -2205,18 +2205,19 @@ fetch('/api/products')
   .then(r => r.json())
   .then(products => {
     products.forEach(p => {
-      const type = p.category === 'koffie' ? 'bonen' : p.category === 'onderdelen' ? 'onderdeel' : 'machine';
-      catalog[p.id] = {
+      const type = p.category === 'beans' ? 'bonen' : p.category === 'machines' ? 'machine' : 'onderdeel';
+      const key = p.slug || p.id;
+      catalog[key] = {
         name: p.name,
-        emoji: p.emoji || '☕',
+        emoji: p.category === 'beans' ? '☕' : p.category === 'machines' ? '⚙️' : '🔧',
         type: type,
         price: parseFloat(p.price) || 0,
         prices: type === 'bonen' ? { '500g': parseFloat(p.price) || 0, '1kg': (parseFloat(p.price) * 1.8) || 0 } : undefined,
-        subtitle: p.subtitle,
+        subtitle: p.description,
         description: p.description,
-        label: p.label,
+        label: p.featured ? 'Aanbevolen' : '',
         image: p.image,
-        stock: p.stock,
+        stock: p.in_stock,
       };
     });
   })
@@ -2487,25 +2488,20 @@ async function placeOrder() {
     }
   });
 
-  const total = getTotal();
-  const customer = {
-    voornaam:   document.getElementById('f-voornaam').value,
-    achternaam: document.getElementById('f-achternaam').value,
-    straat:     document.getElementById('f-straat').value,
-    postcode:   document.getElementById('f-postcode').value,
-    stad:       document.getElementById('f-stad').value,
-    email:      document.getElementById('f-email').value,
-    telefoon:   document.getElementById('f-telefoon').value,
-  };
-
   const orderData = {
     items,
     shipping: { cost: shippingCost, carrier: 'DHL' },
-    total,
-    amount: total.toFixed(2),
-    description: `Koffie Palace bestelling – ${customer.voornaam} ${customer.achternaam}`,
+    total: getTotal(),
     method: selectedPay,
-    customer
+    customer: {
+      voornaam:  document.getElementById('f-voornaam').value,
+      achternaam: document.getElementById('f-achternaam').value,
+      straat:    document.getElementById('f-straat').value,
+      postcode:  document.getElementById('f-postcode').value,
+      stad:      document.getElementById('f-stad').value,
+      email:     document.getElementById('f-email').value,
+      telefoon:  document.getElementById('f-telefoon').value,
+    }
   };
 
   const btn = document.querySelector('#step-3 .shop-btn');
@@ -2519,20 +2515,19 @@ async function placeOrder() {
       body: JSON.stringify(orderData)
     });
     const data = await res.json();
-    if (data.paymentUrl) {
-      window.location.href = data.paymentUrl;
-    } else if (data.error) {
-      document.getElementById('step3-err').textContent = 'Fout: ' + data.error;
-      document.getElementById('step3-err').style.display = 'block';
+    if (data.checkoutUrl) {
+      window.location.href = data.checkoutUrl;
     } else {
       // Offline demo mode
-      document.getElementById('confirm-email').textContent = customer.email;
+      const email = document.getElementById('f-email').value;
+      document.getElementById('confirm-email').textContent = email;
       buildSummary('confirm-summary');
       goStep(4);
     }
   } catch (err) {
     // Offline demo mode - show confirmation
-    document.getElementById('confirm-email').textContent = customer.email;
+    const email = document.getElementById('f-email').value;
+    document.getElementById('confirm-email').textContent = email;
     buildSummary('confirm-summary');
     goStep(4);
   } finally {
