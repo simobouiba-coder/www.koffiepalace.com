@@ -2200,25 +2200,93 @@ let catalog = {
   o5:    { name: 'Portafilters & cups',   emoji: '☕', type: 'onderdeel', price: 12.95 },
 };
 
-// Laad producten uit admin via API en voeg toe aan catalog
+// Laad producten uit database en update catalog + grids
 fetch('/api/products')
   .then(r => r.json())
-  .then(products => {
-    products.forEach(p => {
-      const type = p.category === 'koffie' ? 'bonen' : p.category === 'onderdelen' ? 'onderdeel' : 'machine';
+  .then(dbProducts => {
+    if (!dbProducts || dbProducts.length === 0) return;
+
+    // Update catalog met database producten
+    dbProducts.forEach(p => {
+      const cat = (p.category || '').toLowerCase();
+      const type = cat === 'beans' || cat === 'koffie' ? 'bonen'
+                 : cat === 'onderdelen' ? 'onderdeel'
+                 : 'machine';
+      const price = parseFloat(p.price) || 0;
       catalog[p.id] = {
         name: p.name,
         emoji: p.emoji || '☕',
-        type: type,
-        price: parseFloat(p.price) || 0,
-        prices: type === 'bonen' ? { '500g': parseFloat(p.price) || 0, '1kg': (parseFloat(p.price) * 1.8) || 0 } : undefined,
-        subtitle: p.subtitle,
-        description: p.description,
-        label: p.label,
-        image: p.image,
-        stock: p.stock,
+        type,
+        price,
+        prices: type === 'bonen' ? { '500g': price, '1kg': parseFloat((price * 1.8).toFixed(2)) } : undefined,
+        subtitle: p.subtitle || '',
+        description: p.description || '',
+        label: p.label || '',
+        image: p.image || '',
+        stock: p.stock !== undefined ? p.stock : 10,
       };
     });
+
+    // Update beans grid als er bonen in de database zitten
+    const bonen = dbProducts.filter(p => {
+      const cat = (p.category || '').toLowerCase();
+      return cat === 'beans' || cat === 'koffie';
+    });
+    if (bonen.length > 0) {
+      const beansGrid = document.querySelector('.beans-grid');
+      if (beansGrid) {
+        beansGrid.innerHTML = bonen.map(p => {
+          const price = parseFloat(p.price) || 0;
+          return `
+            <div class="bean-card">
+              <span class="bean-emoji">${p.emoji || '🫘'}</span>
+              <h4>${p.name}</h4>
+              <p>${p.description || ''}</p>
+              <button class="bean-order-btn" onclick="addToCart('${p.id}','${p.name.replace(/'/g,"\\'")}',${price})">Bestellen</button>
+            </div>`;
+        }).join('');
+      }
+    }
+
+    // Update machines grid als er machines in de database zitten
+    const machines = dbProducts.filter(p => {
+      const cat = (p.category || '').toLowerCase();
+      return cat === 'machines' || cat === 'machine';
+    });
+    if (machines.length > 0) {
+      const moGrid = document.getElementById('mo-grid');
+      if (moGrid) {
+        moGrid.innerHTML = machines.map(p => {
+          const price = parseFloat(p.price) || 0;
+          const priceStr = price.toLocaleString('nl-NL', { minimumFractionDigits: 2 });
+          const specs = p.specs || {};
+          const brand = specs.brand || '';
+          const type = specs.type || '';
+          const cat = (p.category || '').toLowerCase();
+          const dataCat = cat.includes('horeca') ? 'horeca' : cat.includes('zakelijk') ? 'zakelijk' : 'thuis';
+          const tagLabel = dataCat === 'horeca' ? '🏆 Horeca kwaliteit'
+                         : dataCat === 'zakelijk' ? '🏢 Zakelijk & kantoor'
+                         : '🏠 Voor thuis';
+          return `
+            <div class="mo-card" data-cat="${dataCat}">
+              <div class="mo-img-box">${p.emoji || '☕'}</div>
+              <div class="mo-body">
+                <div class="mo-tag">${tagLabel}</div>
+                <h3 class="mo-name">${p.name}</h3>
+                <p class="mo-desc">${p.description || ''}</p>
+                ${brand || type ? `<ul class="mo-specs">
+                  ${brand ? `<li>🏷️ Merk: ${brand}</li>` : ''}
+                  ${type ? `<li>☕ Type: ${type}</li>` : ''}
+                </ul>` : ''}
+                <div class="mo-footer">
+                  <div class="mo-price">€ ${priceStr}</div>
+                  <button class="mo-cart-btn" onclick="addToCart('${p.id}','${p.name.replace(/'/g,"\\'")}',${price})">🛒 In winkelwagen</button>
+                </div>
+              </div>
+            </div>`;
+        }).join('');
+      }
+    }
   })
   .catch(() => {});
 
