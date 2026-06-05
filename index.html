@@ -2725,7 +2725,6 @@ function buildSummary(id) {
   const zone = opt ? opt.getAttribute('data-zone') : null;
   const rate = zone ? dhlRates[zone] : null;
   h += `<div class="order-summary-row"><span>Verzending DHL${rate ? ' · ' + rate.label : ''}</span><span>€ ${shippingCost.toFixed(2).replace('.', ',')}</span></div>`;
-  h += `<div class="order-summary-row total"><span>
   h += `<div class="order-summary-row total"><span>Totaal incl. verzending</span><span>€ ${getTotal().toFixed(2).replace('.', ',')}</span></div>`;
   document.getElementById(id).innerHTML = h;
 }
