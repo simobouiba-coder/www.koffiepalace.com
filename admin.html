@@ -3,640 +3,668 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Koffie Palace — Admin</title>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<title>Admin – Koffie Palace</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --gold: #C9A84C; --gold-light: #E8C97A; --gold-dim: #A07830;
-    --bg: #1C1510; --bg2: #251C14; --bg3: #2E2218; --bg4: #382A1E;
-    --border: rgba(201,168,76,0.18); --border2: rgba(201,168,76,0.35);
-    --text: #F5F0E8; --text2: #BBA98A; --text3: #8A7355;
-    --red: #E05252; --green: #4CAF7A;
+    --black: #1C1510; --deep: #231A12; --surface: #2C2018; --surface2: #362820;
+    --gold: #C9A84C; --gold-light: #E2C47A; --gold-dim: rgba(201,168,76,0.18);
+    --white: #F5F0E8; --muted: rgba(245,240,232,0.55); --border: rgba(201,168,76,0.2);
+    --red: #e55; --green: #4caf7a;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: 'Jost', sans-serif; font-weight: 300; min-height: 100vh; }
+  body { font-family: 'Jost', sans-serif; background: var(--black); color: var(--white); min-height: 100vh; }
 
-  /* LOGIN */
-  #login-screen { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-  .login-box { background: var(--bg2); border: 1px solid var(--border2); padding: 3rem 2.5rem; width: 380px; text-align: center; }
-  .login-box h1 { font-family: 'Cormorant Garamond', serif; font-size: 2rem; color: var(--gold); margin-bottom: 0.25rem; }
-  .login-box p { color: var(--text2); font-size: 0.8rem; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 2rem; }
-  .login-box input { width: 100%; background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 0.75rem 1rem; font-family: 'Jost', sans-serif; font-size: 0.9rem; margin-bottom: 1rem; outline: none; transition: border-color 0.2s; }
-  .login-box input:focus { border-color: var(--gold); }
-  .login-box button { width: 100%; background: var(--gold); color: var(--bg); border: none; padding: 0.85rem; font-family: 'Jost', sans-serif; font-size: 0.85rem; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; transition: background 0.2s; }
-  .login-box button:hover { background: var(--gold-light); }
-  .login-error { color: var(--red); font-size: 0.8rem; margin-top: 0.75rem; display: none; }
+  /* ── LOGIN ── */
+  #login-screen {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 2rem;
+  }
+  .login-box {
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 3rem 2.5rem; width: 100%; max-width: 380px;
+  }
+  .login-logo {
+    font-family: 'Cormorant Garamond', serif; color: var(--gold);
+    font-size: 1.6rem; font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase; margin-bottom: 0.4rem;
+  }
+  .login-sub { font-size: 0.75rem; color: var(--muted); letter-spacing: 0.1em; margin-bottom: 2rem; }
+  .field { margin-bottom: 1.2rem; }
+  .field label { display: block; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; margin-bottom: 0.4rem; }
+  .field input {
+    width: 100%; background: var(--deep); border: 1px solid var(--border);
+    color: var(--white); font-family: 'Jost', sans-serif; font-size: 0.9rem;
+    padding: 0.7rem 1rem; outline: none; transition: border-color 0.2s;
+  }
+  .field input:focus { border-color: var(--gold); }
+  .btn-primary {
+    width: 100%; background: var(--gold); color: var(--black); border: none;
+    font-family: 'Jost', sans-serif; font-size: 0.8rem; font-weight: 500;
+    letter-spacing: 0.14em; text-transform: uppercase; padding: 0.85rem;
+    cursor: pointer; transition: background 0.2s;
+  }
+  .btn-primary:hover { background: var(--gold-light); }
+  .login-err { color: var(--red); font-size: 0.82rem; margin-top: 0.75rem; display: none; }
 
-  /* LAYOUT */
-  #app { display: none; min-height: 100vh; }
-  #app.visible { display: block; }
-  .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 220px; background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
-  .sidebar-logo { padding: 1.75rem 1.5rem 1.5rem; border-bottom: 1px solid var(--border); }
-  .sidebar-logo h2 { font-family: 'Cormorant Garamond', serif; font-size: 1.4rem; color: var(--gold); }
-  .sidebar-logo span { font-size: 0.7rem; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; }
-  .nav-section { padding: 1.25rem 0; border-bottom: 1px solid var(--border); }
-  .nav-label { font-size: 0.65rem; color: var(--text3); letter-spacing: 0.15em; text-transform: uppercase; padding: 0 1.5rem 0.5rem; }
-  .nav-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 1.5rem; cursor: pointer; color: var(--text2); font-size: 0.85rem; transition: all 0.2s; border-left: 2px solid transparent; }
-  .nav-item:hover { color: var(--text); background: var(--bg3); }
-  .nav-item.active { color: var(--gold); border-left-color: var(--gold); background: rgba(201,168,76,0.05); }
-  .nav-icon { font-size: 1rem; width: 20px; text-align: center; }
-  .sidebar-footer { margin-top: auto; padding: 1.25rem 1.5rem; border-top: 1px solid var(--border); }
-  .logout-btn { width: 100%; background: none; border: 1px solid var(--border); color: var(--text2); padding: 0.6rem; font-family: 'Jost', sans-serif; font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; transition: all 0.2s; }
-  .logout-btn:hover { border-color: var(--red); color: var(--red); }
-  .main { margin-left: 220px; padding: 2rem 2.5rem; min-height: 100vh; }
-  .page { display: none; }
-  .page.active { display: block; }
-  .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; }
-  .page-header h1 { font-family: 'Cormorant Garamond', serif; font-size: 2rem; color: var(--text); }
-  .page-header p { color: var(--text2); font-size: 0.8rem; margin-top: 0.15rem; }
+  /* ── ADMIN LAYOUT ── */
+  #admin-app { display: none; min-height: 100vh; flex-direction: column; }
+  header {
+    background: var(--deep); border-bottom: 1px solid var(--border);
+    padding: 0 2rem; height: 60px; display: flex; align-items: center;
+    justify-content: space-between; position: sticky; top: 0; z-index: 10;
+  }
+  .header-logo { font-family: 'Cormorant Garamond', serif; color: var(--gold); font-size: 1.2rem; font-weight: 600; letter-spacing: 0.1em; }
+  .header-right { display: flex; align-items: center; gap: 1rem; }
+  .btn-logout {
+    background: none; border: 1px solid var(--border); color: var(--muted);
+    font-family: 'Jost', sans-serif; font-size: 0.72rem; letter-spacing: 0.1em;
+    text-transform: uppercase; padding: 0.4rem 0.9rem; cursor: pointer; transition: all 0.2s;
+  }
+  .btn-logout:hover { border-color: var(--gold); color: var(--gold); }
 
-  /* STATS */
-  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
-  .stat-card { background: var(--bg2); border: 1px solid var(--border); padding: 1.25rem 1.5rem; }
-  .stat-label { font-size: 0.7rem; color: var(--text3); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 0.5rem; }
-  .stat-value { font-family: 'Cormorant Garamond', serif; font-size: 2rem; color: var(--gold); }
-  .stat-sub { font-size: 0.75rem; color: var(--text2); margin-top: 0.25rem; }
+  .admin-body { display: flex; flex: 1; }
 
-  /* BTN */
-  .btn { background: var(--gold); color: var(--bg); border: none; padding: 0.65rem 1.5rem; font-family: 'Jost', sans-serif; font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; transition: background 0.2s; }
-  .btn:hover { background: var(--gold-light); }
-  .btn-outline { background: none; border: 1px solid var(--border2); color: var(--text2); padding: 0.55rem 1.25rem; font-family: 'Jost', sans-serif; font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; transition: all 0.2s; }
-  .btn-outline:hover { border-color: var(--gold); color: var(--gold); }
-  .btn-danger { background: none; border: 1px solid rgba(224,82,82,0.3); color: var(--red); padding: 0.45rem 0.9rem; font-family: 'Jost', sans-serif; font-size: 0.75rem; cursor: pointer; transition: all 0.2s; }
-  .btn-danger:hover { background: rgba(224,82,82,0.1); }
-  .btn-sm { padding: 0.45rem 1rem; font-size: 0.75rem; }
+  /* ── SIDEBAR ── */
+  nav.sidebar {
+    width: 200px; flex-shrink: 0; background: var(--deep);
+    border-right: 1px solid var(--border); padding: 1.5rem 0;
+  }
+  .nav-item {
+    display: block; padding: 0.85rem 1.5rem; color: var(--muted);
+    font-size: 0.78rem; letter-spacing: 0.12em; text-transform: uppercase;
+    cursor: pointer; border-left: 2px solid transparent; transition: all 0.2s;
+    text-decoration: none;
+  }
+  .nav-item:hover { color: var(--gold); background: var(--gold-dim); }
+  .nav-item.active { color: var(--gold); border-left-color: var(--gold); background: var(--gold-dim); }
 
-  /* TABLE */
-  .table-wrap { background: var(--bg2); border: 1px solid var(--border); overflow: hidden; }
-  .table-toolbar { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
-  .search-input { flex: 1; background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 0.6rem 1rem; font-family: 'Jost', sans-serif; font-size: 0.85rem; outline: none; transition: border-color 0.2s; min-width: 180px; max-width: 280px; }
-  .search-input:focus { border-color: var(--gold); }
-  .search-input::placeholder { color: var(--text3); }
-  table { width: 100%; border-collapse: collapse; }
-  thead tr { border-bottom: 1px solid var(--border); }
-  th { padding: 0.75rem 1.25rem; text-align: left; font-size: 0.7rem; font-weight: 400; color: var(--text3); letter-spacing: 0.12em; text-transform: uppercase; }
-  td { padding: 0.9rem 1.25rem; font-size: 0.85rem; color: var(--text); border-bottom: 1px solid var(--border); }
-  tbody tr:last-child td { border-bottom: none; }
-  tbody tr:hover td { background: rgba(201,168,76,0.03); }
-  .product-thumb { width: 44px; height: 44px; object-fit: cover; background: var(--bg3); }
-  .product-thumb-placeholder { width: 44px; height: 44px; background: var(--bg4); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
-  .badge { display: inline-block; padding: 0.2rem 0.6rem; font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; }
-  .badge-gold { background: rgba(201,168,76,0.15); color: var(--gold); }
-  .badge-green { background: rgba(76,175,122,0.15); color: var(--green); }
-  .badge-red { background: rgba(224,82,82,0.15); color: var(--red); }
-  .badge-gray { background: var(--bg4); color: var(--text2); }
+  /* ── MAIN ── */
+  main { flex: 1; padding: 2rem; overflow-x: auto; }
+  .tab { display: none; }
+  .tab.active { display: block; }
 
-  /* MODAL */
-  .modal-overlay { position: fixed; inset: 0; background: rgba(7,7,10,0.85); display: none; align-items: center; justify-content: center; z-index: 500; padding: 2rem; }
-  .modal-overlay.open { display: flex; }
-  .modal { background: var(--bg2); border: 1px solid var(--border2); width: 100%; max-width: 640px; max-height: 90vh; overflow-y: auto; }
-  .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 1.5rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg2); z-index: 1; }
-  .modal-header h2 { font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; color: var(--text); }
-  .modal-close { background: none; border: none; color: var(--text2); font-size: 1.5rem; cursor: pointer; line-height: 1; padding: 0.25rem; }
-  .modal-close:hover { color: var(--text); }
-  .modal-body { padding: 1.5rem; }
-  .modal-footer { display: flex; gap: 0.75rem; justify-content: flex-end; padding: 1.25rem 1.5rem; border-top: 1px solid var(--border); }
+  h1.page-title {
+    font-family: 'Cormorant Garamond', serif; font-size: 1.8rem;
+    color: var(--white); font-weight: 400; margin-bottom: 0.3rem;
+  }
+  .page-sub { font-size: 0.78rem; color: var(--muted); letter-spacing: 0.08em; margin-bottom: 2rem; }
 
-  /* FORM */
+  /* ── STATS ── */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap: 1px; background: var(--border); margin-bottom: 2rem; }
+  .stat-card { background: var(--surface); padding: 1.5rem; }
+  .stat-val { font-family: 'Cormorant Garamond', serif; font-size: 2.2rem; color: var(--gold); }
+  .stat-label { font-size: 0.72rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 0.2rem; }
+
+  /* ── TABLE ── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th { background: var(--surface2); color: var(--muted); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; padding: 0.75rem 1rem; text-align: left; font-weight: 400; }
+  td { padding: 0.85rem 1rem; border-bottom: 1px solid rgba(201,168,76,0.08); vertical-align: middle; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .badge {
+    display: inline-block; font-size: 0.68rem; letter-spacing: 0.08em;
+    text-transform: uppercase; padding: 0.25rem 0.6rem; border-radius: 2px;
+  }
+  .badge-paid    { background: rgba(76,175,122,0.15); color: var(--green); border: 1px solid rgba(76,175,122,0.3); }
+  .badge-pending { background: rgba(201,168,76,0.1);  color: var(--gold);  border: 1px solid var(--border); }
+  .badge-failed  { background: rgba(229,85,85,0.1);   color: var(--red);   border: 1px solid rgba(229,85,85,0.3); }
+  .badge-cancelled { background: rgba(120,120,120,0.1); color: #888; border: 1px solid rgba(120,120,120,0.3); }
+  .badge-shipped { background: rgba(100,149,237,0.1); color: #6495ed; border: 1px solid rgba(100,149,237,0.3); }
+
+  select.status-select {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--white);
+    font-family: 'Jost', sans-serif; font-size: 0.78rem; padding: 0.3rem 0.5rem; cursor: pointer;
+  }
+
+  /* ── TOOLBAR ── */
+  .toolbar { display: flex; gap: 1rem; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .toolbar input, .toolbar select {
+    background: var(--surface); border: 1px solid var(--border); color: var(--white);
+    font-family: 'Jost', sans-serif; font-size: 0.85rem; padding: 0.6rem 1rem; outline: none;
+  }
+  .toolbar input:focus, .toolbar select:focus { border-color: var(--gold); }
+  .btn-action {
+    background: var(--gold-dim); border: 1px solid var(--border); color: var(--gold);
+    font-family: 'Jost', sans-serif; font-size: 0.75rem; letter-spacing: 0.1em;
+    text-transform: uppercase; padding: 0.6rem 1.2rem; cursor: pointer; transition: all 0.2s;
+  }
+  .btn-action:hover { background: rgba(201,168,76,0.3); border-color: var(--gold); }
+  .btn-danger {
+    background: rgba(229,85,85,0.1); border: 1px solid rgba(229,85,85,0.3); color: var(--red);
+    font-family: 'Jost', sans-serif; font-size: 0.72rem; padding: 0.3rem 0.7rem; cursor: pointer;
+  }
+  .btn-danger:hover { background: rgba(229,85,85,0.2); }
+  .btn-edit {
+    background: var(--gold-dim); border: 1px solid var(--border); color: var(--gold);
+    font-family: 'Jost', sans-serif; font-size: 0.72rem; padding: 0.3rem 0.7rem; cursor: pointer;
+  }
+
+  /* ── MODAL ── */
+  .modal-bg {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+    z-index: 200; align-items: center; justify-content: center; padding: 1rem;
+  }
+  .modal-bg.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    width: 100%; max-width: 520px; padding: 2rem; max-height: 90vh; overflow-y: auto;
+  }
+  .modal h2 { font-family: 'Cormorant Garamond', serif; font-size: 1.4rem; color: var(--gold); margin-bottom: 1.5rem; font-weight: 400; }
   .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-  .form-group { margin-bottom: 1.25rem; }
-  .form-group.full { grid-column: 1 / -1; }
-  label { display: block; font-size: 0.7rem; color: var(--text3); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 0.5rem; }
-  input[type="text"], input[type="number"], textarea, select { width: 100%; background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 0.7rem 1rem; font-family: 'Jost', sans-serif; font-size: 0.9rem; outline: none; transition: border-color 0.2s; -webkit-appearance: none; }
-  input:focus, textarea:focus, select:focus { border-color: var(--gold); }
-  textarea { resize: vertical; min-height: 100px; }
-  select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236B6350'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 1rem center; padding-right: 2.5rem; cursor: pointer; }
-  select option { background: var(--bg3); }
+  .form-grid .full { grid-column: 1 / -1; }
+  .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+  .form-group label { font-size: 0.7rem; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; }
+  .form-group input, .form-group select, .form-group textarea {
+    background: var(--deep); border: 1px solid var(--border); color: var(--white);
+    font-family: 'Jost', sans-serif; font-size: 0.88rem; padding: 0.6rem 0.8rem; outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--gold); }
+  .form-group textarea { resize: vertical; min-height: 80px; }
+  .modal-footer { display: flex; gap: 1rem; margin-top: 1.5rem; justify-content: flex-end; }
+  .btn-cancel {
+    background: none; border: 1px solid var(--border); color: var(--muted);
+    font-family: 'Jost', sans-serif; font-size: 0.78rem; padding: 0.6rem 1.2rem; cursor: pointer;
+  }
+  .toast {
+    position: fixed; bottom: 2rem; right: 2rem; background: var(--surface2);
+    border: 1px solid var(--border); color: var(--gold); padding: 1rem 1.5rem;
+    font-size: 0.85rem; z-index: 9999; display: none; border-left: 3px solid var(--gold);
+  }
 
-  /* FOTO */
-  .drop-zone { border: 1px dashed var(--border2); padding: 2rem; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--bg3); position: relative; }
-  .drop-zone:hover, .drop-zone.dragover { border-color: var(--gold); background: rgba(201,168,76,0.05); }
-  .drop-zone-icon { font-size: 2rem; margin-bottom: 0.5rem; }
-  .drop-zone p { color: var(--text2); font-size: 0.85rem; }
-  .drop-zone span { color: var(--gold); }
-  .drop-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-  .image-preview { width: 100%; max-height: 180px; object-fit: contain; margin-top: 1rem; display: none; }
+  /* ── INSTELLINGEN ── */
+  .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; max-width: 700px; }
+  .settings-grid .full { grid-column: 1 / -1; }
+  .settings-section { background: var(--surface); border: 1px solid var(--border); padding: 1.5rem; }
+  .settings-section h3 { font-family: 'Cormorant Garamond', serif; color: var(--gold); font-size: 1.1rem; font-weight: 400; margin-bottom: 1.2rem; }
+  .save-btn {
+    margin-top: 1.5rem; background: var(--gold); color: var(--black); border: none;
+    font-family: 'Jost', sans-serif; font-size: 0.78rem; font-weight: 500;
+    letter-spacing: 0.12em; text-transform: uppercase; padding: 0.75rem 2rem; cursor: pointer;
+  }
+  .save-btn:hover { background: var(--gold-light); }
 
-  /* VOORRAAD */
-  .stock-badge { display: inline-flex; align-items: center; gap: 0.4rem; }
-  .stock-dot { width: 7px; height: 7px; border-radius: 50%; }
-  .stock-dot.in { background: var(--green); }
-  .stock-dot.low { background: #E8A84C; }
-  .stock-dot.out { background: var(--red); }
-
-  /* BESTELLINGEN */
-  .order-card { background: var(--bg2); border: 1px solid var(--border); padding: 1.25rem 1.5rem; margin-bottom: 0.75rem; }
-  .order-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
-  .order-id { font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; color: var(--gold); }
-  .order-meta { display: flex; gap: 2rem; flex-wrap: wrap; }
-  .order-meta-item { font-size: 0.8rem; color: var(--text2); }
-  .order-meta-item strong { color: var(--text); display: block; font-size: 0.85rem; font-weight: 400; }
-
-  /* TOAST */
-  .toast { position: fixed; bottom: 2rem; right: 2rem; z-index: 9999; background: var(--bg3); border: 1px solid var(--border2); padding: 0.9rem 1.5rem; font-size: 0.85rem; color: var(--text); display: none; align-items: center; gap: 0.75rem; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
-  .toast.show { display: flex; }
-  .toast.success { border-left: 3px solid var(--green); }
-  .toast.error { border-left: 3px solid var(--red); }
-
-  .empty-state { text-align: center; padding: 4rem 2rem; color: var(--text3); }
-  .empty-state .empty-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.4; }
-  .empty-state p { font-size: 0.9rem; }
-  .category-filter { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-  .cat-btn { background: none; border: 1px solid var(--border); color: var(--text2); padding: 0.4rem 1rem; font-family: 'Jost', sans-serif; font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; transition: all 0.2s; }
-  .cat-btn:hover, .cat-btn.active { border-color: var(--gold); color: var(--gold); background: rgba(201,168,76,0.05); }
-  .actions { display: flex; gap: 0.5rem; align-items: center; }
-  .divider { border: none; border-top: 1px solid var(--border); margin: 1.25rem 0; }
+  @media (max-width: 640px) {
+    nav.sidebar { display: none; }
+    .form-grid, .settings-grid { grid-template-columns: 1fr; }
+    .form-grid .full, .settings-grid .full { grid-column: 1; }
+  }
 </style>
 </head>
 <body>
 
-<!-- LOGIN -->
+<!-- ── LOGIN ── -->
 <div id="login-screen">
   <div class="login-box">
-    <h1>Koffie Palace</h1>
-    <p>Admin Dashboard</p>
-    <input type="text" id="login-user" placeholder="Gebruikersnaam" autocomplete="off">
-    <input type="password" id="login-pass" placeholder="Wachtwoord">
-    <button onclick="doLogin()">Inloggen</button>
-    <p class="login-error" id="login-err">Ongeldige inloggegevens</p>
+    <div class="login-logo">Koffie Palace</div>
+    <div class="login-sub">Beheer · Admin toegang</div>
+    <div class="field">
+      <label>Wachtwoord</label>
+      <input type="password" id="pw-input" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn-primary" onclick="doLogin()">Inloggen</button>
+    <p class="login-err" id="login-err">Wachtwoord onjuist.</p>
   </div>
 </div>
 
-<!-- APP -->
-<div id="app">
-  <div class="sidebar">
-    <div class="sidebar-logo">
-      <h2>Koffie Palace</h2>
-      <span>Admin Panel</span>
+<!-- ── ADMIN APP ── -->
+<div id="admin-app">
+  <header>
+    <div class="header-logo">☕ Koffie Palace Admin</div>
+    <div class="header-right">
+      <span style="font-size:0.75rem;color:var(--muted);" id="header-date"></span>
+      <button class="btn-logout" onclick="doLogout()">Uitloggen</button>
     </div>
-    <div class="nav-section">
-      <div class="nav-label">Overzicht</div>
-      <div class="nav-item active" onclick="showPage('dashboard', this)"><span class="nav-icon">◈</span> Dashboard</div>
-    </div>
-    <div class="nav-section">
-      <div class="nav-label">Catalogus</div>
-      <div class="nav-item" onclick="showPage('products', this)"><span class="nav-icon">◻</span> Producten</div>
-      <div class="nav-item" onclick="showPage('stock', this)"><span class="nav-icon">◫</span> Voorraad</div>
-    </div>
-    <div class="nav-section">
-      <div class="nav-label">Verkoop</div>
-      <div class="nav-item" onclick="showPage('orders', this)"><span class="nav-icon">◈</span> Bestellingen</div>
-    </div>
-    <div class="sidebar-footer">
-      <button class="logout-btn" onclick="doLogout()">Uitloggen</button>
-    </div>
-  </div>
+  </header>
+  <div class="admin-body">
+    <nav class="sidebar">
+      <span class="nav-item active" onclick="showTab('orders')">📦 Bestellingen</span>
+      <span class="nav-item" onclick="showTab('products')">☕ Producten</span>
+      <span class="nav-item" onclick="showTab('settings')">⚙️ Instellingen</span>
+    </nav>
+    <main>
 
-  <div class="main">
-    <!-- DASHBOARD -->
-    <div class="page active" id="page-dashboard">
-      <div class="page-header">
-        <div><h1>Dashboard</h1><p>Welkom terug — hier is een overzicht</p></div>
-      </div>
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-label">Totaal producten</div><div class="stat-value" id="stat-products">—</div><div class="stat-sub">In catalogus</div></div>
-        <div class="stat-card"><div class="stat-label">Bestellingen</div><div class="stat-value" id="stat-orders">—</div><div class="stat-sub">Totaal ontvangen</div></div>
-        <div class="stat-card"><div class="stat-label">Laag voorraad</div><div class="stat-value" id="stat-low">—</div><div class="stat-sub">Producten &lt; 5 stuks</div></div>
-        <div class="stat-card"><div class="stat-label">Categorieën</div><div class="stat-value" id="stat-cats">—</div><div class="stat-sub">Actieve categorieën</div></div>
-      </div>
-      <div class="table-wrap">
-        <div class="table-toolbar"><span style="font-size:0.8rem;color:var(--text2);">Recente producten</span></div>
-        <table><thead><tr><th></th><th>Naam</th><th>Categorie</th><th>Prijs</th><th>Voorraad</th></tr></thead><tbody id="dashboard-recent"></tbody></table>
-      </div>
-    </div>
+      <!-- ── TAB: BESTELLINGEN ── -->
+      <div id="tab-orders" class="tab active">
+        <h1 class="page-title">Bestellingen</h1>
+        <p class="page-sub" id="orders-sub">Laden…</p>
 
-    <!-- PRODUCTEN -->
-    <div class="page" id="page-products">
-      <div class="page-header">
-        <div><h1>Producten</h1><p>Beheer uw productcatalogus</p></div>
-        <button class="btn" onclick="openModal(null)">+ Nieuw product</button>
-      </div>
-      <div class="table-wrap">
-        <div class="table-toolbar">
-          <input class="search-input" type="text" placeholder="Zoek producten..." oninput="filterProducts(this.value)">
-          <div class="category-filter" id="cat-filters"></div>
-        </div>
-        <table><thead><tr><th></th><th>Naam</th><th>Categorie</th><th>Prijs</th><th>Voorraad</th><th>Label</th><th>Acties</th></tr></thead><tbody id="products-table"></tbody></table>
-        <div class="empty-state" id="products-empty" style="display:none;"><div class="empty-icon">◻</div><p>Geen producten gevonden</p></div>
-      </div>
-    </div>
+        <div class="stats-grid" id="orders-stats"></div>
 
-    <!-- VOORRAAD -->
-    <div class="page" id="page-stock">
-      <div class="page-header">
-        <div><h1>Voorraad</h1><p>Pas voorraadniveaus aan</p></div>
-        <button class="btn" onclick="saveAllStock()">Opslaan</button>
-      </div>
-      <div class="table-wrap">
-        <table><thead><tr><th>Product</th><th>Categorie</th><th>Status</th><th>Stuks</th></tr></thead><tbody id="stock-table"></tbody></table>
-      </div>
-    </div>
-
-    <!-- BESTELLINGEN -->
-    <div class="page" id="page-orders">
-      <div class="page-header"><div><h1>Bestellingen</h1><p>Overzicht van ontvangen bestellingen</p></div></div>
-      <div id="orders-list"></div>
-      <div class="empty-state" id="orders-empty"><div class="empty-icon">◈</div><p>Nog geen bestellingen ontvangen</p></div>
-    </div>
-  </div>
-</div>
-
-<!-- PRODUCT MODAL -->
-<div class="modal-overlay" id="product-modal">
-  <div class="modal">
-    <div class="modal-header">
-      <h2 id="modal-title">Nieuw product</h2>
-      <button class="modal-close" onclick="closeModal()">×</button>
-    </div>
-    <div class="modal-body">
-      <input type="hidden" id="edit-id">
-      <div class="form-group">
-        <label>Productfoto</label>
-        <div class="drop-zone" id="drop-zone"
-          ondragover="event.preventDefault();this.classList.add('dragover')"
-          ondragleave="this.classList.remove('dragover')"
-          ondrop="handleDrop(event)">
-          <input type="file" accept="image/*" onchange="handleFile(this.files[0])">
-          <div class="drop-zone-icon">📷</div>
-          <p>Sleep foto hierheen of <span>klik om te kiezen</span></p>
-        </div>
-        <img id="img-preview" class="image-preview" alt="Preview">
-      </div>
-      <hr class="divider">
-      <div class="form-grid">
-        <div class="form-group">
-          <label>Categorie</label>
-          <select id="edit-cat">
-            <option value="machines">☕ Machine</option>
-            <option value="beans">◉ Koffiebonen</option>
-            <option value="onderdelen">⚙ Onderdelen</option>
-            <option value="accessoires">◈ Accessoires</option>
+        <div class="toolbar">
+          <select id="status-filter" onchange="loadOrders()">
+            <option value="">Alle statussen</option>
+            <option value="pending">In afwachting</option>
+            <option value="paid">Betaald</option>
+            <option value="shipped">Verzonden</option>
+            <option value="cancelled">Geannuleerd</option>
+            <option value="failed">Mislukt</option>
           </select>
+          <input type="text" id="order-search" placeholder="Zoek op ordernummer of naam…" oninput="filterOrderTable(this.value)">
+          <button class="btn-action" onclick="loadOrders()">↻ Vernieuwen</button>
         </div>
-        <div class="form-group">
-          <label>Emoji icoon</label>
-          <input type="text" id="edit-emoji" placeholder="☕" maxlength="4">
+
+        <div class="table-wrap">
+          <table id="orders-table">
+            <thead>
+              <tr>
+                <th>Ordernummer</th>
+                <th>Datum</th>
+                <th>Klant</th>
+                <th>Totaal</th>
+                <th>Status</th>
+                <th>Actie</th>
+              </tr>
+            </thead>
+            <tbody id="orders-tbody"></tbody>
+          </table>
         </div>
-        <div class="form-group full">
-          <label>Productnaam</label>
-          <input type="text" id="edit-name" placeholder="Bijv. Jura X8">
+      </div>
+
+      <!-- ── TAB: PRODUCTEN ── -->
+      <div id="tab-products" class="tab">
+        <h1 class="page-title">Producten</h1>
+        <p class="page-sub" id="products-sub">Laden…</p>
+
+        <div class="toolbar">
+          <input type="text" placeholder="Zoek product…" oninput="filterProductTable(this.value)">
+          <button class="btn-action" onclick="openProductModal()">+ Nieuw product</button>
         </div>
-        <div class="form-group full">
-          <label>Ondertitel / variant</label>
-          <input type="text" id="edit-subtitle" placeholder="Bijv. volautomaat voor kantoor">
+
+        <div class="table-wrap">
+          <table id="products-table">
+            <thead>
+              <tr>
+                <th>Naam</th>
+                <th>Categorie</th>
+                <th>Prijs</th>
+                <th>Voorraad</th>
+                <th>Featured</th>
+                <th>Acties</th>
+              </tr>
+            </thead>
+            <tbody id="products-tbody"></tbody>
+          </table>
         </div>
-        <div class="form-group full">
-          <label>Beschrijving</label>
-          <textarea id="edit-desc" placeholder="Productbeschrijving..."></textarea>
+      </div>
+
+      <!-- ── TAB: INSTELLINGEN ── -->
+      <div id="tab-settings" class="tab">
+        <h1 class="page-title">Site-instellingen</h1>
+        <p class="page-sub">Contactgegevens en openingstijden</p>
+
+        <div style="max-width:660px;">
+          <div class="settings-section">
+            <h3>Contactgegevens</h3>
+            <div class="settings-grid">
+              <div class="form-group">
+                <label>Telefoonnummer</label>
+                <input type="text" id="s-telefoon" placeholder="+31 6 ...">
+              </div>
+              <div class="form-group">
+                <label>WhatsApp nummer (zonder +)</label>
+                <input type="text" id="s-whatsapp" placeholder="316...">
+              </div>
+              <div class="form-group full">
+                <label>E-mailadres (zichtbaar op site)</label>
+                <input type="email" id="s-email" placeholder="info@koffiepalace.nl">
+              </div>
+              <div class="form-group full">
+                <label>Adres</label>
+                <input type="text" id="s-adres" placeholder="Straat, Stad">
+              </div>
+              <div class="form-group full">
+                <label>Openingstijden</label>
+                <input type="text" id="s-openingstijden" placeholder="Ma – Vr: 08:00 – 18:00">
+              </div>
+            </div>
+            <button class="save-btn" onclick="saveSettings()">Opslaan</button>
+            <p id="settings-msg" style="margin-top:0.75rem;font-size:0.82rem;display:none;"></p>
+          </div>
         </div>
-        <div class="form-group">
-          <label>Prijs (€)</label>
-          <input type="number" id="edit-price" placeholder="0.00" step="0.01" min="0">
-        </div>
-        <div class="form-group">
-          <label>Label (optioneel)</label>
-          <input type="text" id="edit-label" placeholder="Bijv. Bestseller">
-        </div>
-        <div class="form-group">
-          <label>Voorraad (stuks)</label>
-          <input type="number" id="edit-stock" placeholder="0" min="0">
-        </div>
-        <div class="form-group">
-          <label>SKU / Artikelnummer</label>
-          <input type="text" id="edit-sku" placeholder="KP-001">
-        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ── PRODUCT MODAL ── -->
+<div class="modal-bg" id="product-modal">
+  <div class="modal">
+    <h2 id="modal-title">Nieuw product</h2>
+    <input type="hidden" id="p-slug-orig">
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Naam *</label>
+        <input type="text" id="p-name" placeholder="Palace Blend">
+      </div>
+      <div class="form-group">
+        <label>Slug (URL) *</label>
+        <input type="text" id="p-slug" placeholder="palace-blend">
+      </div>
+      <div class="form-group">
+        <label>Categorie *</label>
+        <select id="p-category">
+          <option value="beans">Koffiebonen</option>
+          <option value="machines">Machines</option>
+          <option value="onderdelen">Onderdelen</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Prijs (€)</label>
+        <input type="number" id="p-price" placeholder="12.95" step="0.01">
+      </div>
+      <div class="form-group full">
+        <label>Omschrijving</label>
+        <textarea id="p-description" placeholder="Korte productomschrijving…"></textarea>
+      </div>
+      <div class="form-group full">
+        <label>Afbeelding URL</label>
+        <input type="text" id="p-image" placeholder="/images/product.jpg">
+      </div>
+      <div class="form-group">
+        <label>Op voorraad</label>
+        <select id="p-stock">
+          <option value="true">Ja</option>
+          <option value="false">Nee</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Featured</label>
+        <select id="p-featured">
+          <option value="false">Nee</option>
+          <option value="true">Ja</option>
+        </select>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn-outline" onclick="closeModal()">Annuleren</button>
-      <button class="btn" onclick="saveProduct()">✓ Opslaan</button>
+      <button class="btn-cancel" onclick="closeProductModal()">Annuleren</button>
+      <button class="btn-primary" style="width:auto;padding:0.6rem 2rem;" onclick="saveProduct()">Opslaan</button>
     </div>
   </div>
 </div>
 
-<!-- TOAST -->
+<!-- ── TOAST ── -->
 <div class="toast" id="toast"></div>
 
 <script>
-const PASS = 'koffie2024';
-const USER = 'admin';
-let products = [];
-let orders = [];
-let currentImg = null;
-let filterCat = 'all';
-let filterQuery = '';
+// ── Auth ──────────────────────────────────────
+let token = sessionStorage.getItem('kp_admin_token') || '';
 
-// ─── CATEGORIE LABELS ─────────────────────────────────────────────────
-function catLabel(c) {
-  const map = { machines: 'Machine', machine: 'Machine', beans: 'Koffiebonen', koffie: 'Koffiebonen', onderdelen: 'Onderdelen', accessoires: 'Accessoires' };
-  return map[c] || c;
-}
-
-// ─── AUTH ─────────────────────────────────────────────────────────────
-function doLogin() {
-  const u = document.getElementById('login-user').value.trim();
-  const p = document.getElementById('login-pass').value;
-  if (u === USER && p === PASS) {
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').classList.add('visible');
-    init();
+async function doLogin() {
+  const pw = document.getElementById('pw-input').value;
+  const res = await fetch('/api/admin/orders?_check=1', {
+    headers: { Authorization: 'Bearer ' + pw }
+  });
+  if (res.ok || res.status === 200) {
+    token = pw;
+    sessionStorage.setItem('kp_admin_token', pw);
+    showApp();
   } else {
     document.getElementById('login-err').style.display = 'block';
   }
 }
-document.getElementById('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
 function doLogout() {
-  document.getElementById('app').classList.remove('visible');
+  sessionStorage.removeItem('kp_admin_token');
+  token = '';
+  document.getElementById('admin-app').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('pw-input').value = '';
 }
 
-// ─── INIT ─────────────────────────────────────────────────────────────
-function init() { loadProducts(); loadOrders(); }
-
-// ─── API HELPERS ──────────────────────────────────────────────────────
-async function apiGet(url) {
-  const r = await fetch(url);
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
-}
-async function apiPut(url, data) {
-  const r = await fetch(url, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
-}
-async function apiPost(url, data) {
-  const r = await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
-}
-async function apiDelete(url) {
-  const r = await fetch(url, { method: 'DELETE' });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
+function api(path, opts = {}) {
+  return fetch(path, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token, ...(opts.headers||{}) }
+  });
 }
 
-// ─── PRODUCTEN LADEN ──────────────────────────────────────────────────
-async function loadProducts() {
-  try {
-    products = await apiGet('/api/products');
-    showToast('Producten geladen ✓', 'success');
-  } catch(e) {
-    products = [];
-    showToast('Fout bij laden: ' + e.message, 'error');
-  }
-  renderProducts();
-  renderStock();
-  renderDashboard();
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('admin-app').style.display = 'flex';
+  document.getElementById('header-date').textContent = new Date().toLocaleDateString('nl-NL', { weekday:'long', day:'numeric', month:'long' });
+  loadOrders();
+  loadSettings();
 }
+
+// ── Tabs ──────────────────────────────────────
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (name === 'products') loadProducts();
+}
+
+// ── Toast ─────────────────────────────────────
+function toast(msg, ok = true) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.borderLeftColor = ok ? 'var(--green)' : 'var(--red)';
+  t.style.color = ok ? 'var(--green)' : 'var(--red)';
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 3000);
+}
+
+// ── BESTELLINGEN ─────────────────────────────
+let allOrders = [];
 
 async function loadOrders() {
-  try {
-    orders = await apiGet('/api/orders');
-  } catch(e) {
-    orders = [];
+  const status = document.getElementById('status-filter').value;
+  const url = '/api/admin/orders' + (status ? '?status=' + status : '');
+  const res = await api(url);
+  if (!res.ok) { toast('Fout bij laden bestellingen', false); return; }
+  allOrders = await res.json();
+
+  const sub = document.getElementById('orders-sub');
+  sub.textContent = `${allOrders.length} bestelling${allOrders.length !== 1 ? 'en' : ''} gevonden`;
+
+  // Stats
+  const paid   = allOrders.filter(o => o.status === 'paid').length;
+  const rev    = allOrders.filter(o => o.status === 'paid').reduce((s,o) => s + parseFloat(o.total||0), 0);
+  const pend   = allOrders.filter(o => o.status === 'pending').length;
+  document.getElementById('orders-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-val">${allOrders.length}</div><div class="stat-label">Totaal orders</div></div>
+    <div class="stat-card"><div class="stat-val">${paid}</div><div class="stat-label">Betaald</div></div>
+    <div class="stat-card"><div class="stat-val">${pend}</div><div class="stat-label">In afwachting</div></div>
+    <div class="stat-card"><div class="stat-val">€ ${rev.toFixed(2).replace('.', ',')}</div><div class="stat-label">Omzet (betaald)</div></div>
+  `;
+
+  renderOrderTable(allOrders);
+}
+
+function renderOrderTable(orders) {
+  const tbody = document.getElementById('orders-tbody');
+  if (!orders.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:2rem;">Geen bestellingen gevonden</td></tr>';
+    return;
   }
-  renderOrders();
-}
-
-// ─── RENDER DASHBOARD ─────────────────────────────────────────────────
-function renderDashboard() {
-  document.getElementById('stat-products').textContent = products.length;
-  document.getElementById('stat-orders').textContent = orders.length;
-  document.getElementById('stat-low').textContent = products.filter(p => (p.stock || 0) < 5).length;
-  document.getElementById('stat-cats').textContent = [...new Set(products.map(p => p.category))].length;
-  document.getElementById('dashboard-recent').innerHTML = products.slice(-5).reverse().map(p => `
-    <tr>
-      <td>${p.image ? `<img class="product-thumb" src="${p.image}" alt="">` : `<div class="product-thumb-placeholder">${p.emoji||'☕'}</div>`}</td>
-      <td><strong>${p.name}</strong><br><span style="color:var(--text3);font-size:0.8rem">${p.subtitle||''}</span></td>
-      <td><span class="badge badge-gray">${catLabel(p.category)}</span></td>
-      <td style="color:var(--gold)">€ ${parseFloat(p.price||0).toFixed(2)}</td>
-      <td>${stockBadge(p.stock)}</td>
-    </tr>`).join('');
-}
-
-function stockBadge(s) {
-  const n = parseInt(s) || 0;
-  if (n === 0) return `<span class="stock-badge"><span class="stock-dot out"></span> Uitverkocht</span>`;
-  if (n < 5) return `<span class="stock-badge"><span class="stock-dot low"></span> Laag (${n})</span>`;
-  return `<span class="stock-badge"><span class="stock-dot in"></span> ${n} stuks</span>`;
-}
-
-// ─── RENDER PRODUCTEN ─────────────────────────────────────────────────
-function renderProducts() {
-  const cats = ['all', ...new Set(products.map(p => p.category))];
-  document.getElementById('cat-filters').innerHTML = cats.map(c =>
-    `<button class="cat-btn${filterCat===c?' active':''}" onclick="setCatFilter('${c}')">${c==='all'?'Alle':catLabel(c)}</button>`
-  ).join('');
-
-  const q = filterQuery.toLowerCase();
-  const filtered = products.filter(p => {
-    const matchCat = filterCat === 'all' || p.category === filterCat;
-    const matchQ = !q || p.name.toLowerCase().includes(q) || (p.description||'').toLowerCase().includes(q);
-    return matchCat && matchQ;
-  });
-
-  const empty = document.getElementById('products-empty');
-  const tbody = document.getElementById('products-table');
-  if (!filtered.length) { empty.style.display = 'block'; tbody.innerHTML = ''; return; }
-  empty.style.display = 'none';
-  tbody.innerHTML = filtered.map(p => `
-    <tr>
-      <td>${p.image ? `<img class="product-thumb" src="${p.image}" alt="">` : `<div class="product-thumb-placeholder">${p.emoji||'☕'}</div>`}</td>
-      <td><strong>${p.name}</strong><br><span style="color:var(--text3);font-size:0.8rem">${p.subtitle||''}</span></td>
-      <td><span class="badge badge-gray">${catLabel(p.category)}</span></td>
-      <td style="color:var(--gold)">€ ${parseFloat(p.price||0).toFixed(2)}</td>
-      <td>${stockBadge(p.stock)}</td>
-      <td><span style="color:var(--text2);font-size:0.8rem">${p.label||'—'}</span></td>
-      <td class="actions">
-        <button class="btn btn-sm" onclick="editProduct(${p.id})">Bewerken</button>
-        <button class="btn-danger" onclick="deleteProduct(${p.id})">✕</button>
+  tbody.innerHTML = orders.map(o => {
+    const c = typeof o.customer === 'string' ? JSON.parse(o.customer) : o.customer;
+    const name = c ? `${c.voornaam||''} ${c.achternaam||''}`.trim() || c.email || '—' : '—';
+    const date = new Date(o.created_at).toLocaleDateString('nl-NL', { day:'numeric', month:'short', year:'numeric' });
+    const statusClass = { paid:'badge-paid', pending:'badge-pending', failed:'badge-failed', cancelled:'badge-cancelled', shipped:'badge-shipped' }[o.status] || 'badge-pending';
+    const statusLabel = { paid:'Betaald', pending:'In afwachting', failed:'Mislukt', cancelled:'Geannuleerd', shipped:'Verzonden' }[o.status] || o.status;
+    return `<tr>
+      <td style="font-family:'Cormorant Garamond',serif;color:var(--gold);">${o.order_number}</td>
+      <td style="color:var(--muted);font-size:0.8rem;">${date}</td>
+      <td>${name}</td>
+      <td>€ ${parseFloat(o.total||0).toFixed(2).replace('.', ',')}</td>
+      <td><span class="badge ${statusClass}">${statusLabel}</span></td>
+      <td>
+        <select class="status-select" onchange="updateOrderStatus('${o.order_number}', this.value)">
+          <option value="">Wijzig status…</option>
+          <option value="pending">In afwachting</option>
+          <option value="paid">Betaald</option>
+          <option value="shipped">Verzonden</option>
+          <option value="cancelled">Geannuleerd</option>
+        </select>
       </td>
-    </tr>`).join('');
-}
-
-// ─── RENDER VOORRAAD ──────────────────────────────────────────────────
-function renderStock() {
-  document.getElementById('stock-table').innerHTML = products.map(p => `
-    <tr>
-      <td><strong>${p.name}</strong></td>
-      <td><span class="badge badge-gray">${catLabel(p.category)}</span></td>
-      <td>${stockBadge(p.stock)}</td>
-      <td style="width:140px"><input type="number" value="${p.stock||0}" min="0" style="width:100%;padding:0.5rem;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-family:'Jost',sans-serif" data-id="${p.id}" class="stock-input"></td>
-    </tr>`).join('');
-}
-
-// ─── RENDER ORDERS ────────────────────────────────────────────────────
-function renderOrders() {
-  const el = document.getElementById('orders-list');
-  const empty = document.getElementById('orders-empty');
-  if (!orders.length) { empty.style.display = 'block'; el.innerHTML = ''; return; }
-  empty.style.display = 'none';
-  el.innerHTML = orders.map(o => {
-    const customer = typeof o.customer === 'string' ? JSON.parse(o.customer) : (o.customer || {});
-    const items = typeof o.items === 'string' ? JSON.parse(o.items) : (o.items || []);
-    const statusClass = o.status === 'paid' ? 'badge-green' : o.status === 'pending' ? 'badge-gold' : 'badge-gray';
-    return `<div class="order-card">
-      <div class="order-header">
-        <span class="order-id">${o.order_number || o.id}</span>
-        <span class="badge ${statusClass}">${o.status||'pending'}</span>
-      </div>
-      <div class="order-meta">
-        <div class="order-meta-item"><strong>${customer.voornaam||''} ${customer.achternaam||''}</strong>Klant</div>
-        <div class="order-meta-item"><strong>€ ${parseFloat(o.total||0).toFixed(2)}</strong>Totaal</div>
-        <div class="order-meta-item"><strong>${new Date(o.created_at||Date.now()).toLocaleDateString('nl-NL')}</strong>Datum</div>
-        <div class="order-meta-item"><strong>${items.length} artikel(en)</strong>Besteld</div>
-      </div>
-    </div>`;
+    </tr>`;
   }).join('');
 }
 
-function setCatFilter(c) { filterCat = c; renderProducts(); }
-function filterProducts(q) { filterQuery = q; renderProducts(); }
-
-// ─── MODAL ────────────────────────────────────────────────────────────
-function openModal(p) {
-  currentImg = p?.image || null;
-  document.getElementById('edit-id').value = p?.id || '';
-  document.getElementById('edit-name').value = p?.name || '';
-  document.getElementById('edit-subtitle').value = p?.subtitle || '';
-  document.getElementById('edit-desc').value = p?.description || '';
-  document.getElementById('edit-price').value = p?.price || '';
-  document.getElementById('edit-label').value = p?.label || '';
-  document.getElementById('edit-stock').value = p?.stock !== undefined ? p.stock : '';
-  document.getElementById('edit-sku').value = p?.sku || '';
-  document.getElementById('edit-emoji').value = p?.emoji || '☕';
-  // Categorie: normaliseer naar database waarden
-  const cat = p?.category || 'machines';
-  const catNorm = cat === 'machine' ? 'machines' : cat === 'koffie' ? 'beans' : cat;
-  document.getElementById('edit-cat').value = catNorm;
-  document.getElementById('modal-title').textContent = p ? 'Product bewerken' : 'Nieuw product';
-  const prev = document.getElementById('img-preview');
-  if (p?.image) { prev.src = p.image; prev.style.display = 'block'; }
-  else { prev.style.display = 'none'; prev.src = ''; }
-  document.getElementById('product-modal').classList.add('open');
-}
-
-function closeModal() { document.getElementById('product-modal').classList.remove('open'); }
-
-function editProduct(id) {
-  const p = products.find(x => String(x.id) === String(id));
-  if (p) openModal(p);
-}
-
-// ─── FOTO UPLOAD ──────────────────────────────────────────────────────
-function handleDrop(e) {
-  e.preventDefault();
-  document.getElementById('drop-zone').classList.remove('dragover');
-  const file = e.dataTransfer.files[0];
-  if (file && file.type.startsWith('image/')) handleFile(file);
-}
-
-async function handleFile(file) {
-  if (!file) return;
-  const prev = document.getElementById('img-preview');
-  showToast('Foto uploaden...', 'success');
-  try {
-    const formData = new FormData();
-    formData.append('image', file);
-    const r = await fetch('/api/upload-image', { method: 'POST', body: formData });
-    if (!r.ok) throw new Error(await r.text());
-    const data = await r.json();
-    currentImg = data.url;
-    prev.src = currentImg;
-    prev.style.display = 'block';
-    showToast('Foto geüpload ✓', 'success');
-  } catch(e) {
-    showToast('Upload mislukt: ' + e.message, 'error');
-    // Toon preview lokaal maar sla geen URL op
-    const reader = new FileReader();
-    reader.onload = ev => { prev.src = ev.target.result; prev.style.display = 'block'; };
-    reader.readAsDataURL(file);
-  }
-}
-
-// ─── OPSLAAN ──────────────────────────────────────────────────────────
-async function saveProduct() {
-  const id = document.getElementById('edit-id').value;
-  const data = {
-    name:        document.getElementById('edit-name').value.trim(),
-    subtitle:    document.getElementById('edit-subtitle').value.trim(),
-    description: document.getElementById('edit-desc').value.trim(),
-    price:       parseFloat(document.getElementById('edit-price').value) || 0,
-    label:       document.getElementById('edit-label').value.trim(),
-    stock:       parseInt(document.getElementById('edit-stock').value) || 0,
-    sku:         document.getElementById('edit-sku').value.trim(),
-    emoji:       document.getElementById('edit-emoji').value.trim() || '☕',
-    category:    document.getElementById('edit-cat').value,
-    image:       currentImg,
-  };
-
-  if (!data.name) { showToast('Vul een productnaam in', 'error'); return; }
-
-  try {
-    if (id) {
-      const updated = await apiPut(`/api/products/${id}`, data);
-      const i = products.findIndex(p => String(p.id) === String(id));
-      if (i !== -1) products[i] = updated; else products.push(updated);
-      showToast('Product bijgewerkt ✓', 'success');
-    } else {
-      const created = await apiPost('/api/products', data);
-      products.push(created);
-      showToast('Product aangemaakt ✓', 'success');
-    }
-    closeModal();
-    renderProducts();
-    renderStock();
-    renderDashboard();
-  } catch(e) {
-    showToast('Opslaan mislukt: ' + e.message, 'error');
-    console.error('saveProduct fout:', e);
-  }
-}
-
-async function deleteProduct(id) {
-  if (!confirm('Product verwijderen?')) return;
-  try {
-    await apiDelete(`/api/products/${id}`);
-    products = products.filter(p => String(p.id) !== String(id));
-    renderProducts();
-    renderStock();
-    renderDashboard();
-    showToast('Product verwijderd', 'success');
-  } catch(e) {
-    showToast('Verwijderen mislukt: ' + e.message, 'error');
-  }
-}
-
-async function saveAllStock() {
-  const inputs = document.querySelectorAll('.stock-input');
-  const promises = [];
-  inputs.forEach(inp => {
-    const id = inp.dataset.id;
-    const stock = parseInt(inp.value) || 0;
-    const p = products.find(x => String(x.id) === String(id));
-    if (p) p.stock = stock;
-    promises.push(apiPut(`/api/products/${id}`, { stock }).catch(e => console.error('stock fout:', e)));
+function filterOrderTable(q) {
+  const lower = q.toLowerCase();
+  const filtered = allOrders.filter(o => {
+    const c = typeof o.customer === 'string' ? JSON.parse(o.customer) : o.customer;
+    const name = c ? `${c.voornaam||''} ${c.achternaam||''} ${c.email||''}`.toLowerCase() : '';
+    return o.order_number.toLowerCase().includes(lower) || name.includes(lower);
   });
-  await Promise.all(promises);
-  renderProducts();
-  renderDashboard();
-  showToast('Voorraad opgeslagen ✓', 'success');
+  renderOrderTable(filtered);
 }
 
-// ─── NAV ──────────────────────────────────────────────────────────────
-function showPage(name, el) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('page-' + name).classList.add('active');
-  if (el) el.classList.add('active');
+async function updateOrderStatus(orderNumber, status) {
+  if (!status) return;
+  const res = await api(`/api/admin/orders/${orderNumber}/status`, {
+    method: 'PATCH', body: JSON.stringify({ status })
+  });
+  if (res.ok) { toast('✅ Status bijgewerkt'); loadOrders(); }
+  else toast('Fout bij bijwerken', false);
 }
 
-// ─── TOAST ────────────────────────────────────────────────────────────
-function showToast(msg, type = 'success') {
-  const t = document.getElementById('toast');
-  t.textContent = (type === 'success' ? '✓ ' : '⚠ ') + msg;
-  t.className = `toast show ${type}`;
-  setTimeout(() => t.classList.remove('show'), 3000);
+// ── PRODUCTEN ────────────────────────────────
+let allProducts = [];
+let editingSlug = null;
+
+async function loadProducts() {
+  const res = await api('/api/admin/products');
+  if (!res.ok) { toast('Fout bij laden producten', false); return; }
+  allProducts = await res.json();
+  document.getElementById('products-sub').textContent = `${allProducts.length} producten`;
+  renderProductTable(allProducts);
+}
+
+function renderProductTable(products) {
+  const tbody = document.getElementById('products-tbody');
+  if (!products.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:2rem;">Geen producten</td></tr>';
+    return;
+  }
+  tbody.innerHTML = products.map(p => {
+    const catLabel = { beans:'Koffiebonen', machines:'Machines', onderdelen:'Onderdelen' }[p.category] || p.category;
+    return `<tr>
+      <td><strong>${p.name}</strong><br><small style="color:var(--muted)">${p.slug}</small></td>
+      <td>${catLabel}</td>
+      <td>€ ${parseFloat(p.price||0).toFixed(2).replace('.', ',')}</td>
+      <td><span class="badge ${p.in_stock ? 'badge-paid' : 'badge-failed'}">${p.in_stock ? 'Op voorraad' : 'Uitverkocht'}</span></td>
+      <td>${p.featured ? '⭐ Ja' : '—'}</td>
+      <td style="display:flex;gap:0.5rem;">
+        <button class="btn-edit" onclick='openProductModal(${JSON.stringify(p)})'>Wijzig</button>
+        <button class="btn-danger" onclick="deleteProduct('${p.slug}')">Verwijder</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function filterProductTable(q) {
+  const lower = q.toLowerCase();
+  renderProductTable(allProducts.filter(p => p.name.toLowerCase().includes(lower) || p.slug.toLowerCase().includes(lower)));
+}
+
+function openProductModal(product) {
+  editingSlug = product ? product.slug : null;
+  document.getElementById('modal-title').textContent = product ? 'Product wijzigen' : 'Nieuw product';
+  document.getElementById('p-name').value        = product?.name        || '';
+  document.getElementById('p-slug').value        = product?.slug        || '';
+  document.getElementById('p-slug-orig').value   = product?.slug        || '';
+  document.getElementById('p-category').value    = product?.category    || 'beans';
+  document.getElementById('p-price').value       = product?.price       || '';
+  document.getElementById('p-description').value = product?.description || '';
+  document.getElementById('p-image').value       = product?.image       || '';
+  document.getElementById('p-stock').value       = product?.in_stock !== false ? 'true' : 'false';
+  document.getElementById('p-featured').value    = product?.featured ? 'true' : 'false';
+  document.getElementById('product-modal').classList.add('open');
+
+  // Auto-slug from name
+  if (!product) {
+    document.getElementById('p-name').oninput = e => {
+      document.getElementById('p-slug').value = e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    };
+  } else {
+    document.getElementById('p-name').oninput = null;
+  }
+}
+
+function closeProductModal() {
+  document.getElementById('product-modal').classList.remove('open');
+  editingSlug = null;
+}
+
+async function saveProduct() {
+  const body = {
+    slug:        document.getElementById('p-slug').value.trim(),
+    name:        document.getElementById('p-name').value.trim(),
+    category:    document.getElementById('p-category').value,
+    price:       parseFloat(document.getElementById('p-price').value) || 0,
+    description: document.getElementById('p-description').value.trim(),
+    image:       document.getElementById('p-image').value.trim(),
+    in_stock:    document.getElementById('p-stock').value === 'true',
+    featured:    document.getElementById('p-featured').value === 'true',
+  };
+  if (!body.slug || !body.name) { toast('Naam en slug zijn verplicht', false); return; }
+
+  const url    = editingSlug ? `/api/admin/products/${editingSlug}` : '/api/admin/products';
+  const method = editingSlug ? 'PUT' : 'POST';
+  const res    = await api(url, { method, body: JSON.stringify(body) });
+
+  if (res.ok) {
+    toast(editingSlug ? '✅ Product bijgewerkt' : '✅ Product aangemaakt');
+    closeProductModal();
+    loadProducts();
+  } else {
+    const err = await res.json();
+    toast(err.error || 'Fout bij opslaan', false);
+  }
+}
+
+async function deleteProduct(slug) {
+  if (!confirm(`Weet u zeker dat u "${slug}" wilt verwijderen?`)) return;
+  const res = await api(`/api/admin/products/${slug}`, { method: 'DELETE' });
+  if (res.ok) { toast('✅ Product verwijderd'); loadProducts(); }
+  else toast('Fout bij verwijderen', false);
+}
+
+// ── INSTELLINGEN ─────────────────────────────
+async function loadSettings() {
+  const res = await fetch('/api/settings');
+  if (!res.ok) return;
+  const s = await res.json();
+  document.getElementById('s-telefoon').value       = s.telefoon       || '';
+  document.getElementById('s-whatsapp').value       = s.whatsapp       || '';
+  document.getElementById('s-email').value          = s.email          || '';
+  document.getElementById('s-adres').value          = s.adres          || '';
+  document.getElementById('s-openingstijden').value = s.openingstijden || '';
+}
+
+async function saveSettings() {
+  const body = {
+    telefoon:       document.getElementById('s-telefoon').value.trim(),
+    whatsapp:       document.getElementById('s-whatsapp').value.trim(),
+    email:          document.getElementById('s-email').value.trim(),
+    adres:          document.getElementById('s-adres').value.trim(),
+    openingstijden: document.getElementById('s-openingstijden').value.trim(),
+  };
+  const res = await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify(body) });
+  const msg = document.getElementById('settings-msg');
+  if (res.ok) {
+    toast('✅ Instellingen opgeslagen');
+    msg.textContent = '✅ Opgeslagen';
+    msg.style.color = 'var(--green)';
+    msg.style.display = 'block';
+    setTimeout(() => msg.style.display = 'none', 3000);
+  } else {
+    toast('Fout bij opslaan', false);
+  }
+}
+
+// ── Init ──────────────────────────────────────
+if (token) {
+  showApp();
+} else {
+  document.getElementById('login-screen').style.display = 'flex';
 }
 </script>
 </body>

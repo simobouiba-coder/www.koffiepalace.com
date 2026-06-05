@@ -3,18 +3,6 @@ const path = require('path');
 const { Pool } = require('pg');
 const { createMollieClient } = require('@mollie/api-client');
 const nodemailer = require('nodemailer');
-const multer = require('multer');
-const cloudinary = require('cloudinary').v2;
-const { Readable } = require('stream');
-
-// ─── Cloudinary config ───────────────────────────────────────────────────────
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key:    process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -23,19 +11,21 @@ const PORT = process.env.PORT || 3000;
 const mollie = createMollieClient({ apiKey: process.env.MOLLIE_API_KEY });
 
 // ─── Email transporter ──────────────────────────────────────────────────────
+const CONTACT_EMAIL = 'info@koffiepalace.nl';
+
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
+  host: process.env.SMTP_HOST || 'smtp.transip.email',
   port: parseInt(process.env.SMTP_PORT || '587'),
   secure: false,
   auth: {
-    user: process.env.SMTP_USER,
+    user: process.env.SMTP_USER || CONTACT_EMAIL,
     pass: process.env.SMTP_PASS,
   }
 });
 
 async function sendOrderConfirmation(customer, items, total, orderNumber) {
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    console.warn('⚠️ SMTP niet geconfigureerd, mail overgeslagen');
+  if (!process.env.SMTP_PASS) {
+    console.warn('⚠️ SMTP_PASS niet geconfigureerd, mail overgeslagen');
     return;
   }
   // customer kan JSON string of object zijn
@@ -54,9 +44,9 @@ async function sendOrderConfirmation(customer, items, total, orderNumber) {
     ).join('');
 
     await transporter.sendMail({
-      from: `"Koffie Palace" <${process.env.SMTP_USER}>`,
+      from: `"Koffie Palace" <${CONTACT_EMAIL}>`,
       to: customer.email,
-      bcc: process.env.SMTP_USER,
+      bcc: CONTACT_EMAIL,
       subject: `Bevestiging bestelling ${orderNumber} – Koffie Palace`,
       html: `
         <div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;background:#0a0a0a;color:#f5f0e8;padding:40px;">
@@ -74,7 +64,7 @@ async function sendOrderConfirmation(customer, items, total, orderNumber) {
             </tr>
           </table>
           <hr style="border-color:#333;margin:24px 0;">
-          <p style="color:#888;font-size:14px;">Vragen? Mail ons op <a href="mailto:${process.env.SMTP_USER}" style="color:#c9a84c;">${process.env.SMTP_USER}</a></p>
+          <p style="color:#888;font-size:14px;">Vragen? Mail ons op <a href="mailto:${CONTACT_EMAIL}" style="color:#c9a84c;">${CONTACT_EMAIL}</a></p>
           <p style="color:#888;font-size:12px;">© Koffie Palace · By Nadira Store · Nederland</p>
         </div>
       `
@@ -154,6 +144,29 @@ async function initDB() {
         FOR EACH ROW EXECUTE FUNCTION update_updated_at();
     `);
 
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+
+    // Standaard instellingen
+    const defaults = [
+      ['telefoon',      '+31 6 13 86 41 89'],
+      ['whatsapp',      '31613864189'],
+      ['openingstijden','Ma – Vr: 08:00 – 18:00'],
+      ['adres',         'Nederland, onder Nadira Store'],
+      ['email',         'info@koffiepalace.nl'],
+    ];
+    for (const [key, value] of defaults) {
+      await client.query(
+        `INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING`,
+        [key, value]
+      );
+    }
+
     console.log('✅ Database tabellen klaar');
 
     const { rowCount } = await client.query('SELECT 1 FROM products LIMIT 1');
@@ -198,39 +211,27 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(__dirname));
 
 // ─── API: Producten ──────────────────────────────────────────────────────────
-function enrichProduct(row) {
-  const s = row.specs || {};
-  return { ...row, subtitle: s.subtitle || '', stock: s.stock !== undefined ? s.stock : 10, sku: s.sku || '', emoji: s.emoji || '☕', label: s.label || '' };
-}
-
 app.get('/api/products', async (req, res) => {
   try {
     const { category, featured } = req.query;
-    let query = 'SELECT * FROM products';
+    let query = 'SELECT * FROM products WHERE in_stock = true';
     const params = [];
-    const conditions = [];
-    if (category) { params.push(category); conditions.push(`category = $${params.length}`); }
-    if (featured === 'true') conditions.push('featured = true');
-    if (conditions.length) query += ' WHERE ' + conditions.join(' AND ');
+    if (category) { params.push(category); query += ` AND category = $${params.length}`; }
+    if (featured === 'true') query += ' AND featured = true';
     query += ' ORDER BY category, id';
     const { rows } = await pool.query(query, params);
-    res.json(rows.map(enrichProduct));
+    res.json(rows);
   } catch (err) {
     console.error('GET /api/products:', err);
     res.status(500).json({ error: 'Database fout' });
   }
 });
 
-app.get('/api/products/:id', async (req, res) => {
+app.get('/api/products/:slug', async (req, res) => {
   try {
-    const param = req.params.id;
-    const isNum = /^\d+$/.test(param);
-    const { rows } = await pool.query(
-      isNum ? 'SELECT * FROM products WHERE id = $1' : 'SELECT * FROM products WHERE slug = $1',
-      [isNum ? parseInt(param) : param]
-    );
+    const { rows } = await pool.query('SELECT * FROM products WHERE slug = $1', [req.params.slug]);
     if (rows.length === 0) return res.status(404).json({ error: 'Product niet gevonden' });
-    res.json(enrichProduct(rows[0]));
+    res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: 'Database fout' });
   }
@@ -238,64 +239,47 @@ app.get('/api/products/:id', async (req, res) => {
 
 app.post('/api/products', async (req, res) => {
   try {
-    const { slug, category, name, subtitle, description, price, image, variants, specs, in_stock, featured, stock, sku, emoji, label } = req.body;
-    if (!category || !name) return res.status(400).json({ error: 'category en name zijn verplicht' });
-    const finalSlug = slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now();
-    const specsObj = (typeof specs === 'object' && specs) ? { ...specs } : {};
-    if (subtitle) specsObj.subtitle = subtitle;
-    if (sku) specsObj.sku = sku;
-    if (emoji) specsObj.emoji = emoji;
-    if (label) specsObj.label = label;
-    if (stock !== undefined) specsObj.stock = parseInt(stock) || 0;
-    const { rows } = await pool.query(
-      `INSERT INTO products (slug, category, name, description, price, image, variants, specs, in_stock, featured) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
-      [finalSlug, category, name, description, price, image, variants ? JSON.stringify(variants) : null, JSON.stringify(specsObj), in_stock !== false, featured || false]
-    );
-    res.status(201).json(enrichProduct(rows[0]));
+    const { slug, category, name, description, price, image, variants, specs, in_stock, featured } = req.body;
+    if (!slug || !category || !name) return res.status(400).json({ error: 'slug, category en name zijn verplicht' });
+    const { rows } = await pool.query(`
+      INSERT INTO products (slug, category, name, description, price, image, variants, specs, in_stock, featured)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *
+    `, [slug, category, name, description, price, image,
+        variants ? JSON.stringify(variants) : null,
+        specs ? JSON.stringify(specs) : null,
+        in_stock !== false, featured || false]);
+    res.status(201).json(rows[0]);
   } catch (err) {
-    if (err.code === '23505') return res.status(409).json({ error: 'Slug bestaat al, probeer andere naam' });
-    console.error('POST /api/products:', err);
-    res.status(500).json({ error: 'Database fout: ' + err.message });
+    if (err.code === '23505') return res.status(409).json({ error: 'Slug bestaat al' });
+    res.status(500).json({ error: 'Database fout' });
   }
 });
 
-app.put('/api/products/:id', async (req, res) => {
+app.put('/api/products/:slug', async (req, res) => {
   try {
-    const { category, name, subtitle, description, price, image, variants, specs, in_stock, featured, stock, sku, emoji, label } = req.body;
-    const param = req.params.id;
-    const isNum = /^\d+$/.test(param);
-    const cur = await pool.query(
-      isNum ? 'SELECT specs FROM products WHERE id = $1' : 'SELECT specs FROM products WHERE slug = $1',
-      [isNum ? parseInt(param) : param]
-    );
-    if (cur.rows.length === 0) return res.status(404).json({ error: 'Product niet gevonden' });
-    const specsObj = { ...(cur.rows[0].specs || {}) };
-    if (subtitle !== undefined) specsObj.subtitle = subtitle;
-    if (sku !== undefined) specsObj.sku = sku;
-    if (emoji !== undefined) specsObj.emoji = emoji;
-    if (label !== undefined) specsObj.label = label;
-    if (stock !== undefined) specsObj.stock = parseInt(stock) || 0;
-    if (typeof specs === 'object' && specs) Object.assign(specsObj, specs);
-    const where = isNum ? 'WHERE id = $10' : 'WHERE slug = $10';
-    const { rows } = await pool.query(
-      `UPDATE products SET category=COALESCE($1,category), name=COALESCE($2,name), description=COALESCE($3,description), price=COALESCE($4,price), image=COALESCE($5,image), variants=COALESCE($6,variants), specs=$7, in_stock=COALESCE($8,in_stock), featured=COALESCE($9,featured) ${where} RETURNING *`,
-      [category, name, description, price, image, variants ? JSON.stringify(variants) : null, JSON.stringify(specsObj), in_stock, featured, isNum ? parseInt(param) : param]
-    );
-    res.json(enrichProduct(rows[0]));
+    const { category, name, description, price, image, variants, specs, in_stock, featured } = req.body;
+    const { rows } = await pool.query(`
+      UPDATE products SET
+        category = COALESCE($1, category), name = COALESCE($2, name),
+        description = COALESCE($3, description), price = COALESCE($4, price),
+        image = COALESCE($5, image), variants = COALESCE($6, variants),
+        specs = COALESCE($7, specs), in_stock = COALESCE($8, in_stock),
+        featured = COALESCE($9, featured)
+      WHERE slug = $10 RETURNING *
+    `, [category, name, description, price, image,
+        variants ? JSON.stringify(variants) : null,
+        specs ? JSON.stringify(specs) : null,
+        in_stock, featured, req.params.slug]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Product niet gevonden' });
+    res.json(rows[0]);
   } catch (err) {
-    console.error('PUT /api/products:', err);
-    res.status(500).json({ error: 'Database fout: ' + err.message });
+    res.status(500).json({ error: 'Database fout' });
   }
 });
 
-app.delete('/api/products/:id', async (req, res) => {
+app.delete('/api/products/:slug', async (req, res) => {
   try {
-    const param = req.params.id;
-    const isNum = /^\d+$/.test(param);
-    const { rowCount } = await pool.query(
-      isNum ? 'DELETE FROM products WHERE id = $1' : 'DELETE FROM products WHERE slug = $1',
-      [isNum ? parseInt(param) : param]
-    );
+    const { rowCount } = await pool.query('DELETE FROM products WHERE slug = $1', [req.params.slug]);
     if (rowCount === 0) return res.status(404).json({ error: 'Product niet gevonden' });
     res.json({ success: true });
   } catch (err) {
@@ -303,24 +287,6 @@ app.delete('/api/products/:id', async (req, res) => {
   }
 });
 
-
-// ─── API: Foto uploaden naar Cloudinary ──────────────────────────────────────
-app.post("/api/upload-image", upload.single("image"), async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ error: "Geen bestand ontvangen" });
-    const result = await new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        { folder: "koffie-palace", resource_type: "image" },
-        (error, result) => error ? reject(error) : resolve(result)
-      );
-      Readable.from(req.file.buffer).pipe(stream);
-    });
-    res.json({ url: result.secure_url, public_id: result.public_id });
-  } catch (err) {
-    console.error("Upload fout:", err);
-    res.status(500).json({ error: "Upload mislukt: " + err.message });
-  }
-});
 // ─── API: Mollie betaling aanmaken ───────────────────────────────────────────
 app.post('/api/create-payment', async (req, res) => {
   try {
@@ -483,6 +449,170 @@ app.patch('/api/orders/:orderNumber/status', async (req, res) => {
   }
 });
 
+// ─── Admin authenticatie ─────────────────────────────────────────────────────
+function adminAuth(req, res, next) {
+  const token = (req.headers['authorization'] || '').replace('Bearer ', '').trim();
+  const pw    = process.env.ADMIN_PASSWORD || 'admin';
+  if (!token || token !== pw) {
+    return res.status(401).json({ error: 'Niet geautoriseerd' });
+  }
+  next();
+}
+
+// ─── API: Instellingen (publiek lezen) ───────────────────────────────────────
+app.get('/api/settings', async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT key, value FROM settings');
+    const obj = {};
+    rows.forEach(r => { obj[r.key] = r.value; });
+    res.json(obj);
+  } catch (err) {
+    res.status(500).json({ error: 'Database fout' });
+  }
+});
+
+// ─── API: Admin – instellingen opslaan ───────────────────────────────────────
+app.put('/api/admin/settings', adminAuth, async (req, res) => {
+  try {
+    const entries = Object.entries(req.body);
+    for (const [key, value] of entries) {
+      await pool.query(
+        `INSERT INTO settings (key, value, updated_at) VALUES ($1,$2,NOW())
+         ON CONFLICT (key) DO UPDATE SET value=$2, updated_at=NOW()`,
+        [key, value]
+      );
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Database fout' });
+  }
+});
+
+// ─── API: Admin – bestellingen ───────────────────────────────────────────────
+app.get('/api/admin/orders', adminAuth, async (req, res) => {
+  try {
+    const { status } = req.query;
+    let query = 'SELECT * FROM orders';
+    const params = [];
+    if (status) { params.push(status); query += ' WHERE status = $1'; }
+    query += ' ORDER BY created_at DESC';
+    const { rows } = await pool.query(query, params);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Database fout' });
+  }
+});
+
+app.patch('/api/admin/orders/:orderNumber/status', adminAuth, async (req, res) => {
+  try {
+    const { status } = req.body;
+    const { rows } = await pool.query(
+      `UPDATE orders SET status = $1 WHERE order_number = $2 RETURNING *`,
+      [status, req.params.orderNumber]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Niet gevonden' });
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: 'Database fout' });
+  }
+});
+
+// ─── API: Admin – producten ──────────────────────────────────────────────────
+app.get('/api/admin/products', adminAuth, async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM products ORDER BY category, id');
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Database fout' });
+  }
+});
+
+app.post('/api/admin/products', adminAuth, async (req, res) => {
+  try {
+    const { slug, category, name, description, price, image, variants, specs, in_stock, featured } = req.body;
+    if (!slug || !category || !name) return res.status(400).json({ error: 'slug, category en name verplicht' });
+    const { rows } = await pool.query(
+      `INSERT INTO products (slug,category,name,description,price,image,variants,specs,in_stock,featured)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+      [slug, category, name, description, price, image,
+       variants ? JSON.stringify(variants) : null,
+       specs    ? JSON.stringify(specs)    : null,
+       in_stock !== false, featured || false]
+    );
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    if (err.code === '23505') return res.status(409).json({ error: 'Slug bestaat al' });
+    res.status(500).json({ error: 'Database fout' });
+  }
+});
+
+app.put('/api/admin/products/:slug', adminAuth, async (req, res) => {
+  try {
+    const { category, name, description, price, image, variants, specs, in_stock, featured } = req.body;
+    const { rows } = await pool.query(
+      `UPDATE products SET
+         category=COALESCE($1,category), name=COALESCE($2,name),
+         description=COALESCE($3,description), price=COALESCE($4,price),
+         image=COALESCE($5,image), variants=COALESCE($6,variants),
+         specs=COALESCE($7,specs), in_stock=COALESCE($8,in_stock), featured=COALESCE($9,featured)
+       WHERE slug=$10 RETURNING *`,
+      [category, name, description, price, image,
+       variants ? JSON.stringify(variants) : null,
+       specs    ? JSON.stringify(specs)    : null,
+       in_stock, featured, req.params.slug]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Niet gevonden' });
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: 'Database fout' });
+  }
+});
+
+app.delete('/api/admin/products/:slug', adminAuth, async (req, res) => {
+  try {
+    const { rowCount } = await pool.query('DELETE FROM products WHERE slug=$1', [req.params.slug]);
+    if (rowCount === 0) return res.status(404).json({ error: 'Niet gevonden' });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Database fout' });
+  }
+});
+
+// ─── Contact formulier ───────────────────────────────────────────────────────
+app.post('/api/contact', async (req, res) => {
+  try {
+    const { naam, email, bericht } = req.body;
+    if (!naam || !email || !bericht) {
+      return res.status(400).json({ error: 'Alle velden zijn verplicht' });
+    }
+    if (!process.env.SMTP_PASS) {
+      console.warn('⚠️ SMTP_PASS niet geconfigureerd, contactmail overgeslagen');
+      return res.json({ success: true });
+    }
+    await transporter.sendMail({
+      from: `"Koffie Palace Website" <${CONTACT_EMAIL}>`,
+      to: CONTACT_EMAIL,
+      replyTo: email,
+      subject: `Nieuw contactbericht van ${naam}`,
+      html: `
+        <div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;background:#0a0a0a;color:#f5f0e8;padding:40px;">
+          <h2 style="color:#c9a84c;">Nieuw bericht via koffiepalace.nl</h2>
+          <hr style="border-color:#333;margin:20px 0;">
+          <p><strong style="color:#c9a84c;">Naam:</strong> ${naam}</p>
+          <p><strong style="color:#c9a84c;">E-mail:</strong> <a href="mailto:${email}" style="color:#c9a84c;">${email}</a></p>
+          <hr style="border-color:#333;margin:20px 0;">
+          <p style="white-space:pre-wrap;">${bericht}</p>
+        </div>
+      `
+    });
+    console.log(`✅ Contactmail ontvangen van ${naam} <${email}>`);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('POST /api/contact fout:', err);
+    res.status(500).json({ error: 'Versturen mislukt' });
+  }
+});
+
 // ─── Health check ────────────────────────────────────────────────────────────
 app.get('/health', async (req, res) => {
   try {
@@ -497,6 +627,9 @@ app.get('/health', async (req, res) => {
 app.get('*', (req, res) => {
   if (req.path.startsWith('/api/')) {
     return res.status(404).json({ error: 'Endpoint niet gevonden' });
+  }
+  if (req.path === '/admin' || req.path === '/admin/') {
+    return res.sendFile(path.join(__dirname, 'admin.html'));
   }
   res.sendFile(path.join(__dirname, 'index.html'));
 });
