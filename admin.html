@@ -6,195 +6,83 @@
 <title>Admin – Koffie Palace</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --black: #1C1510; --deep: #231A12; --surface: #2C2018; --surface2: #362820;
-    --gold: #C9A84C; --gold-light: #E2C47A; --gold-dim: rgba(201,168,76,0.18);
-    --white: #F5F0E8; --muted: rgba(245,240,232,0.55); --border: rgba(201,168,76,0.2);
-    --red: #e55; --green: #4caf7a;
-  }
-  body { font-family: 'Jost', sans-serif; background: var(--black); color: var(--white); min-height: 100vh; }
-
-  /* ── LOGIN ── */
-  #login-screen {
-    display: flex; align-items: center; justify-content: center;
-    min-height: 100vh; padding: 2rem;
-  }
-  .login-box {
-    background: var(--surface); border: 1px solid var(--border);
-    padding: 3rem 2.5rem; width: 100%; max-width: 380px;
-  }
-  .login-logo {
-    font-family: 'Cormorant Garamond', serif; color: var(--gold);
-    font-size: 1.6rem; font-weight: 600; letter-spacing: 0.12em;
-    text-transform: uppercase; margin-bottom: 0.4rem;
-  }
-  .login-sub { font-size: 0.75rem; color: var(--muted); letter-spacing: 0.1em; margin-bottom: 2rem; }
-  .field { margin-bottom: 1.2rem; }
-  .field label { display: block; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; margin-bottom: 0.4rem; }
-  .field input {
-    width: 100%; background: var(--deep); border: 1px solid var(--border);
-    color: var(--white); font-family: 'Jost', sans-serif; font-size: 0.9rem;
-    padding: 0.7rem 1rem; outline: none; transition: border-color 0.2s;
-  }
-  .field input:focus { border-color: var(--gold); }
-  .btn-primary {
-    width: 100%; background: var(--gold); color: var(--black); border: none;
-    font-family: 'Jost', sans-serif; font-size: 0.8rem; font-weight: 500;
-    letter-spacing: 0.14em; text-transform: uppercase; padding: 0.85rem;
-    cursor: pointer; transition: background 0.2s;
-  }
-  .btn-primary:hover { background: var(--gold-light); }
-  .login-err { color: var(--red); font-size: 0.82rem; margin-top: 0.75rem; display: none; }
-
-  /* ── ADMIN LAYOUT ── */
-  #admin-app { display: none; min-height: 100vh; flex-direction: column; }
-  header {
-    background: var(--deep); border-bottom: 1px solid var(--border);
-    padding: 0 2rem; height: 60px; display: flex; align-items: center;
-    justify-content: space-between; position: sticky; top: 0; z-index: 10;
-  }
-  .header-logo { font-family: 'Cormorant Garamond', serif; color: var(--gold); font-size: 1.2rem; font-weight: 600; letter-spacing: 0.1em; }
-  .header-right { display: flex; align-items: center; gap: 1rem; }
-  .btn-logout {
-    background: none; border: 1px solid var(--border); color: var(--muted);
-    font-family: 'Jost', sans-serif; font-size: 0.72rem; letter-spacing: 0.1em;
-    text-transform: uppercase; padding: 0.4rem 0.9rem; cursor: pointer; transition: all 0.2s;
-  }
-  .btn-logout:hover { border-color: var(--gold); color: var(--gold); }
-
-  .admin-body { display: flex; flex: 1; }
-
-  /* ── SIDEBAR ── */
-  nav.sidebar {
-    width: 200px; flex-shrink: 0; background: var(--deep);
-    border-right: 1px solid var(--border); padding: 1.5rem 0;
-  }
-  .nav-item {
-    display: block; padding: 0.85rem 1.5rem; color: var(--muted);
-    font-size: 0.78rem; letter-spacing: 0.12em; text-transform: uppercase;
-    cursor: pointer; border-left: 2px solid transparent; transition: all 0.2s;
-    text-decoration: none;
-  }
-  .nav-item:hover { color: var(--gold); background: var(--gold-dim); }
-  .nav-item.active { color: var(--gold); border-left-color: var(--gold); background: var(--gold-dim); }
-
-  /* ── MAIN ── */
-  main { flex: 1; padding: 2rem; overflow-x: auto; }
-  .tab { display: none; }
-  .tab.active { display: block; }
-
-  h1.page-title {
-    font-family: 'Cormorant Garamond', serif; font-size: 1.8rem;
-    color: var(--white); font-weight: 400; margin-bottom: 0.3rem;
-  }
-  .page-sub { font-size: 0.78rem; color: var(--muted); letter-spacing: 0.08em; margin-bottom: 2rem; }
-
-  /* ── STATS ── */
-  .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap: 1px; background: var(--border); margin-bottom: 2rem; }
-  .stat-card { background: var(--surface); padding: 1.5rem; }
-  .stat-val { font-family: 'Cormorant Garamond', serif; font-size: 2.2rem; color: var(--gold); }
-  .stat-label { font-size: 0.72rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 0.2rem; }
-
-  /* ── TABLE ── */
-  .table-wrap { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-  th { background: var(--surface2); color: var(--muted); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; padding: 0.75rem 1rem; text-align: left; font-weight: 400; }
-  td { padding: 0.85rem 1rem; border-bottom: 1px solid rgba(201,168,76,0.08); vertical-align: middle; }
-  tr:hover td { background: rgba(255,255,255,0.02); }
-  .badge {
-    display: inline-block; font-size: 0.68rem; letter-spacing: 0.08em;
-    text-transform: uppercase; padding: 0.25rem 0.6rem; border-radius: 2px;
-  }
-  .badge-paid    { background: rgba(76,175,122,0.15); color: var(--green); border: 1px solid rgba(76,175,122,0.3); }
-  .badge-pending { background: rgba(201,168,76,0.1);  color: var(--gold);  border: 1px solid var(--border); }
-  .badge-failed  { background: rgba(229,85,85,0.1);   color: var(--red);   border: 1px solid rgba(229,85,85,0.3); }
-  .badge-cancelled { background: rgba(120,120,120,0.1); color: #888; border: 1px solid rgba(120,120,120,0.3); }
-  .badge-shipped { background: rgba(100,149,237,0.1); color: #6495ed; border: 1px solid rgba(100,149,237,0.3); }
-
-  select.status-select {
-    background: var(--surface2); border: 1px solid var(--border); color: var(--white);
-    font-family: 'Jost', sans-serif; font-size: 0.78rem; padding: 0.3rem 0.5rem; cursor: pointer;
-  }
-
-  /* ── TOOLBAR ── */
-  .toolbar { display: flex; gap: 1rem; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; }
-  .toolbar input, .toolbar select {
-    background: var(--surface); border: 1px solid var(--border); color: var(--white);
-    font-family: 'Jost', sans-serif; font-size: 0.85rem; padding: 0.6rem 1rem; outline: none;
-  }
-  .toolbar input:focus, .toolbar select:focus { border-color: var(--gold); }
-  .btn-action {
-    background: var(--gold-dim); border: 1px solid var(--border); color: var(--gold);
-    font-family: 'Jost', sans-serif; font-size: 0.75rem; letter-spacing: 0.1em;
-    text-transform: uppercase; padding: 0.6rem 1.2rem; cursor: pointer; transition: all 0.2s;
-  }
-  .btn-action:hover { background: rgba(201,168,76,0.3); border-color: var(--gold); }
-  .btn-danger {
-    background: rgba(229,85,85,0.1); border: 1px solid rgba(229,85,85,0.3); color: var(--red);
-    font-family: 'Jost', sans-serif; font-size: 0.72rem; padding: 0.3rem 0.7rem; cursor: pointer;
-  }
-  .btn-danger:hover { background: rgba(229,85,85,0.2); }
-  .btn-edit {
-    background: var(--gold-dim); border: 1px solid var(--border); color: var(--gold);
-    font-family: 'Jost', sans-serif; font-size: 0.72rem; padding: 0.3rem 0.7rem; cursor: pointer;
-  }
-
-  /* ── MODAL ── */
-  .modal-bg {
-    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75);
-    z-index: 200; align-items: center; justify-content: center; padding: 1rem;
-  }
-  .modal-bg.open { display: flex; }
-  .modal {
-    background: var(--surface); border: 1px solid var(--border);
-    width: 100%; max-width: 520px; padding: 2rem; max-height: 90vh; overflow-y: auto;
-  }
-  .modal h2 { font-family: 'Cormorant Garamond', serif; font-size: 1.4rem; color: var(--gold); margin-bottom: 1.5rem; font-weight: 400; }
-  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-  .form-grid .full { grid-column: 1 / -1; }
-  .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
-  .form-group label { font-size: 0.7rem; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; }
-  .form-group input, .form-group select, .form-group textarea {
-    background: var(--deep); border: 1px solid var(--border); color: var(--white);
-    font-family: 'Jost', sans-serif; font-size: 0.88rem; padding: 0.6rem 0.8rem; outline: none;
-    transition: border-color 0.2s;
-  }
-  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--gold); }
-  .form-group textarea { resize: vertical; min-height: 80px; }
-  .modal-footer { display: flex; gap: 1rem; margin-top: 1.5rem; justify-content: flex-end; }
-  .btn-cancel {
-    background: none; border: 1px solid var(--border); color: var(--muted);
-    font-family: 'Jost', sans-serif; font-size: 0.78rem; padding: 0.6rem 1.2rem; cursor: pointer;
-  }
-  .toast {
-    position: fixed; bottom: 2rem; right: 2rem; background: var(--surface2);
-    border: 1px solid var(--border); color: var(--gold); padding: 1rem 1.5rem;
-    font-size: 0.85rem; z-index: 9999; display: none; border-left: 3px solid var(--gold);
-  }
-
-  /* ── INSTELLINGEN ── */
-  .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; max-width: 700px; }
-  .settings-grid .full { grid-column: 1 / -1; }
-  .settings-section { background: var(--surface); border: 1px solid var(--border); padding: 1.5rem; }
-  .settings-section h3 { font-family: 'Cormorant Garamond', serif; color: var(--gold); font-size: 1.1rem; font-weight: 400; margin-bottom: 1.2rem; }
-  .save-btn {
-    margin-top: 1.5rem; background: var(--gold); color: var(--black); border: none;
-    font-family: 'Jost', sans-serif; font-size: 0.78rem; font-weight: 500;
-    letter-spacing: 0.12em; text-transform: uppercase; padding: 0.75rem 2rem; cursor: pointer;
-  }
-  .save-btn:hover { background: var(--gold-light); }
-
-  @media (max-width: 640px) {
-    nav.sidebar { display: none; }
-    .form-grid, .settings-grid { grid-template-columns: 1fr; }
-    .form-grid .full, .settings-grid .full { grid-column: 1; }
-  }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--black:#1C1510;--deep:#231A12;--surface:#2C2018;--surface2:#362820;--gold:#C9A84C;--gold-light:#E2C47A;--gold-dim:rgba(201,168,76,0.18);--white:#F5F0E8;--muted:rgba(245,240,232,0.55);--border:rgba(201,168,76,0.2);--red:#e55;--green:#4caf7a}
+body{font-family:'Jost',sans-serif;background:var(--black);color:var(--white);min-height:100vh}
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:2rem}
+.login-box{background:var(--surface);border:1px solid var(--border);padding:3rem 2.5rem;width:100%;max-width:380px}
+.login-logo{font-family:'Cormorant Garamond',serif;color:var(--gold);font-size:1.6rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.4rem}
+.login-sub{font-size:0.75rem;color:var(--muted);letter-spacing:0.1em;margin-bottom:2rem}
+.field{margin-bottom:1.2rem}
+.field label{display:block;font-size:0.7rem;letter-spacing:0.12em;color:var(--muted);text-transform:uppercase;margin-bottom:0.4rem}
+.field input{width:100%;background:var(--deep);border:1px solid var(--border);color:var(--white);font-family:'Jost',sans-serif;font-size:0.9rem;padding:0.7rem 1rem;outline:none;transition:border-color 0.2s}
+.field input:focus{border-color:var(--gold)}
+.btn-primary{width:100%;background:var(--gold);color:var(--black);border:none;font-family:'Jost',sans-serif;font-size:0.8rem;font-weight:500;letter-spacing:0.14em;text-transform:uppercase;padding:0.85rem;cursor:pointer;transition:background 0.2s}
+.btn-primary:hover{background:var(--gold-light)}
+.login-err{color:var(--red);font-size:0.82rem;margin-top:0.75rem;display:none}
+#admin-app{display:none;min-height:100vh;flex-direction:column}
+header{background:var(--deep);border-bottom:1px solid var(--border);padding:0 2rem;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.header-logo{font-family:'Cormorant Garamond',serif;color:var(--gold);font-size:1.2rem;font-weight:600;letter-spacing:0.1em}
+.btn-logout{background:none;border:1px solid var(--border);color:var(--muted);font-family:'Jost',sans-serif;font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;padding:0.4rem 0.9rem;cursor:pointer;transition:all 0.2s}
+.btn-logout:hover{border-color:var(--gold);color:var(--gold)}
+.admin-body{display:flex;flex:1}
+nav.sidebar{width:200px;flex-shrink:0;background:var(--deep);border-right:1px solid var(--border);padding:1.5rem 0}
+.nav-item{display:block;padding:0.85rem 1.5rem;color:var(--muted);font-size:0.78rem;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;border-left:2px solid transparent;transition:all 0.2s}
+.nav-item:hover{color:var(--gold);background:var(--gold-dim)}
+.nav-item.active{color:var(--gold);border-left-color:var(--gold);background:var(--gold-dim)}
+main{flex:1;padding:2rem;overflow-x:auto}
+.tab{display:none}
+.tab.active{display:block}
+h1.page-title{font-family:'Cormorant Garamond',serif;font-size:1.8rem;color:var(--white);font-weight:400;margin-bottom:0.3rem}
+.page-sub{font-size:0.78rem;color:var(--muted);letter-spacing:0.08em;margin-bottom:2rem}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:1px;background:var(--border);margin-bottom:2rem}
+.stat-card{background:var(--surface);padding:1.5rem}
+.stat-val{font-family:'Cormorant Garamond',serif;font-size:2.2rem;color:var(--gold)}
+.stat-label{font-size:0.72rem;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-top:0.2rem}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:0.85rem}
+th{background:var(--surface2);color:var(--muted);font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;padding:0.75rem 1rem;text-align:left;font-weight:400}
+td{padding:0.85rem 1rem;border-bottom:1px solid rgba(201,168,76,0.08);vertical-align:middle}
+tr:hover td{background:rgba(255,255,255,0.02)}
+.badge{display:inline-block;font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;padding:0.25rem 0.6rem;border-radius:2px}
+.badge-paid{background:rgba(76,175,122,0.15);color:var(--green);border:1px solid rgba(76,175,122,0.3)}
+.badge-pending{background:rgba(201,168,76,0.1);color:var(--gold);border:1px solid var(--border)}
+.badge-failed{background:rgba(229,85,85,0.1);color:var(--red);border:1px solid rgba(229,85,85,0.3)}
+.badge-cancelled{background:rgba(120,120,120,0.1);color:#888;border:1px solid rgba(120,120,120,0.3)}
+.badge-shipped{background:rgba(100,149,237,0.1);color:#6495ed;border:1px solid rgba(100,149,237,0.3)}
+select.status-select{background:var(--surface2);border:1px solid var(--border);color:var(--white);font-family:'Jost',sans-serif;font-size:0.78rem;padding:0.3rem 0.5rem;cursor:pointer}
+.toolbar{display:flex;gap:1rem;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap}
+.toolbar input,.toolbar select{background:var(--surface);border:1px solid var(--border);color:var(--white);font-family:'Jost',sans-serif;font-size:0.85rem;padding:0.6rem 1rem;outline:none}
+.toolbar input:focus,.toolbar select:focus{border-color:var(--gold)}
+.btn-action{background:var(--gold-dim);border:1px solid var(--border);color:var(--gold);font-family:'Jost',sans-serif;font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;padding:0.6rem 1.2rem;cursor:pointer;transition:all 0.2s}
+.btn-action:hover{background:rgba(201,168,76,0.3);border-color:var(--gold)}
+.btn-danger{background:rgba(229,85,85,0.1);border:1px solid rgba(229,85,85,0.3);color:var(--red);font-family:'Jost',sans-serif;font-size:0.72rem;padding:0.3rem 0.7rem;cursor:pointer}
+.btn-edit{background:var(--gold-dim);border:1px solid var(--border);color:var(--gold);font-family:'Jost',sans-serif;font-size:0.72rem;padding:0.3rem 0.7rem;cursor:pointer}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:200;align-items:center;justify-content:center;padding:1rem}
+.modal-bg.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);width:100%;max-width:520px;padding:2rem;max-height:90vh;overflow-y:auto}
+.modal h2{font-family:'Cormorant Garamond',serif;font-size:1.4rem;color:var(--gold);margin-bottom:1.5rem;font-weight:400}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.form-grid .full{grid-column:1/-1}
+.form-group{display:flex;flex-direction:column;gap:0.4rem}
+.form-group label{font-size:0.7rem;letter-spacing:0.1em;color:var(--muted);text-transform:uppercase}
+.form-group input,.form-group select,.form-group textarea{background:var(--deep);border:1px solid var(--border);color:var(--white);font-family:'Jost',sans-serif;font-size:0.88rem;padding:0.6rem 0.8rem;outline:none;transition:border-color 0.2s}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--gold)}
+.form-group textarea{resize:vertical;min-height:80px}
+.modal-footer{display:flex;gap:1rem;margin-top:1.5rem;justify-content:flex-end}
+.btn-cancel{background:none;border:1px solid var(--border);color:var(--muted);font-family:'Jost',sans-serif;font-size:0.78rem;padding:0.6rem 1.2rem;cursor:pointer}
+.toast{position:fixed;bottom:2rem;right:2rem;background:var(--surface2);border:1px solid var(--border);color:var(--gold);padding:1rem 1.5rem;font-size:0.85rem;z-index:9999;display:none;border-left:3px solid var(--gold)}
+.settings-section{background:var(--surface);border:1px solid var(--border);padding:1.5rem;max-width:600px}
+.settings-section h3{font-family:'Cormorant Garamond',serif;color:var(--gold);font-size:1.1rem;font-weight:400;margin-bottom:1.2rem}
+.settings-fields{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.settings-fields .full{grid-column:1/-1}
+.save-btn{margin-top:1.5rem;background:var(--gold);color:var(--black);border:none;font-family:'Jost',sans-serif;font-size:0.78rem;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;padding:0.75rem 2rem;cursor:pointer}
+.save-btn:hover{background:var(--gold-light)}
+@media(max-width:640px){nav.sidebar{display:none}.form-grid,.settings-fields{grid-template-columns:1fr}.form-grid .full,.settings-fields .full{grid-column:1}}
 </style>
 </head>
 <body>
 
-<!-- ── LOGIN ── -->
 <div id="login-screen">
   <div class="login-box">
     <div class="login-logo">Koffie Palace</div>
@@ -208,30 +96,26 @@
   </div>
 </div>
 
-<!-- ── ADMIN APP ── -->
 <div id="admin-app">
   <header>
     <div class="header-logo">☕ Koffie Palace Admin</div>
-    <div class="header-right">
-      <span style="font-size:0.75rem;color:var(--muted);" id="header-date"></span>
+    <div style="display:flex;align-items:center;gap:1rem">
+      <span style="font-size:0.75rem;color:var(--muted)" id="header-date"></span>
       <button class="btn-logout" onclick="doLogout()">Uitloggen</button>
     </div>
   </header>
   <div class="admin-body">
     <nav class="sidebar">
-      <span class="nav-item active" onclick="showTab('orders')">📦 Bestellingen</span>
-      <span class="nav-item" onclick="showTab('products')">☕ Producten</span>
-      <span class="nav-item" onclick="showTab('settings')">⚙️ Instellingen</span>
+      <span class="nav-item active" onclick="showTab('orders',this)">📦 Bestellingen</span>
+      <span class="nav-item" onclick="showTab('products',this)">☕ Producten</span>
+      <span class="nav-item" onclick="showTab('settings',this)">⚙️ Instellingen</span>
     </nav>
     <main>
 
-      <!-- ── TAB: BESTELLINGEN ── -->
       <div id="tab-orders" class="tab active">
         <h1 class="page-title">Bestellingen</h1>
         <p class="page-sub" id="orders-sub">Laden…</p>
-
         <div class="stats-grid" id="orders-stats"></div>
-
         <div class="toolbar">
           <select id="status-filter" onchange="loadOrders()">
             <option value="">Alle statussen</option>
@@ -241,87 +125,46 @@
             <option value="cancelled">Geannuleerd</option>
             <option value="failed">Mislukt</option>
           </select>
-          <input type="text" id="order-search" placeholder="Zoek op ordernummer of naam…" oninput="filterOrderTable(this.value)">
+          <input type="text" id="order-search" placeholder="Zoek op ordernummer of naam…" oninput="filterOrders(this.value)">
           <button class="btn-action" onclick="loadOrders()">↻ Vernieuwen</button>
         </div>
-
         <div class="table-wrap">
-          <table id="orders-table">
-            <thead>
-              <tr>
-                <th>Ordernummer</th>
-                <th>Datum</th>
-                <th>Klant</th>
-                <th>Totaal</th>
-                <th>Status</th>
-                <th>Actie</th>
-              </tr>
-            </thead>
+          <table>
+            <thead><tr><th>Ordernummer</th><th>Datum</th><th>Klant</th><th>Totaal</th><th>Status</th><th>Actie</th></tr></thead>
             <tbody id="orders-tbody"></tbody>
           </table>
         </div>
       </div>
 
-      <!-- ── TAB: PRODUCTEN ── -->
       <div id="tab-products" class="tab">
         <h1 class="page-title">Producten</h1>
         <p class="page-sub" id="products-sub">Laden…</p>
-
         <div class="toolbar">
-          <input type="text" placeholder="Zoek product…" oninput="filterProductTable(this.value)">
-          <button class="btn-action" onclick="openProductModal()">+ Nieuw product</button>
+          <input type="text" placeholder="Zoek product…" oninput="filterProducts(this.value)">
+          <button class="btn-action" onclick="openProductModal(null)">+ Nieuw product</button>
         </div>
-
         <div class="table-wrap">
-          <table id="products-table">
-            <thead>
-              <tr>
-                <th>Naam</th>
-                <th>Categorie</th>
-                <th>Prijs</th>
-                <th>Voorraad</th>
-                <th>Featured</th>
-                <th>Acties</th>
-              </tr>
-            </thead>
+          <table>
+            <thead><tr><th>Naam</th><th>Categorie</th><th>Prijs</th><th>Voorraad</th><th>Featured</th><th>Acties</th></tr></thead>
             <tbody id="products-tbody"></tbody>
           </table>
         </div>
       </div>
 
-      <!-- ── TAB: INSTELLINGEN ── -->
       <div id="tab-settings" class="tab">
-        <h1 class="page-title">Site-instellingen</h1>
+        <h1 class="page-title">Instellingen</h1>
         <p class="page-sub">Contactgegevens en openingstijden</p>
-
-        <div style="max-width:660px;">
-          <div class="settings-section">
-            <h3>Contactgegevens</h3>
-            <div class="settings-grid">
-              <div class="form-group">
-                <label>Telefoonnummer</label>
-                <input type="text" id="s-telefoon" placeholder="+31 6 ...">
-              </div>
-              <div class="form-group">
-                <label>WhatsApp nummer (zonder +)</label>
-                <input type="text" id="s-whatsapp" placeholder="316...">
-              </div>
-              <div class="form-group full">
-                <label>E-mailadres (zichtbaar op site)</label>
-                <input type="email" id="s-email" placeholder="info@koffiepalace.nl">
-              </div>
-              <div class="form-group full">
-                <label>Adres</label>
-                <input type="text" id="s-adres" placeholder="Straat, Stad">
-              </div>
-              <div class="form-group full">
-                <label>Openingstijden</label>
-                <input type="text" id="s-openingstijden" placeholder="Ma – Vr: 08:00 – 18:00">
-              </div>
-            </div>
-            <button class="save-btn" onclick="saveSettings()">Opslaan</button>
-            <p id="settings-msg" style="margin-top:0.75rem;font-size:0.82rem;display:none;"></p>
+        <div class="settings-section">
+          <h3>Contactgegevens</h3>
+          <div class="settings-fields">
+            <div class="form-group"><label>Telefoonnummer</label><input type="text" id="s-telefoon" placeholder="+31 6 ..."></div>
+            <div class="form-group"><label>WhatsApp (zonder +)</label><input type="text" id="s-whatsapp" placeholder="316..."></div>
+            <div class="form-group full"><label>E-mailadres (op site)</label><input type="email" id="s-email" placeholder="info@koffiepalace.nl"></div>
+            <div class="form-group full"><label>Adres</label><input type="text" id="s-adres"></div>
+            <div class="form-group full"><label>Openingstijden</label><input type="text" id="s-openingstijden" placeholder="Ma – Vr: 08:00 – 18:00"></div>
           </div>
+          <button class="save-btn" onclick="saveSettings()">Opslaan</button>
+          <p id="settings-msg" style="margin-top:0.75rem;font-size:0.82rem;display:none"></p>
         </div>
       </div>
 
@@ -329,75 +172,47 @@
   </div>
 </div>
 
-<!-- ── PRODUCT MODAL ── -->
 <div class="modal-bg" id="product-modal">
   <div class="modal">
     <h2 id="modal-title">Nieuw product</h2>
     <input type="hidden" id="p-slug-orig">
     <div class="form-grid">
-      <div class="form-group">
-        <label>Naam *</label>
-        <input type="text" id="p-name" placeholder="Palace Blend">
-      </div>
-      <div class="form-group">
-        <label>Slug (URL) *</label>
-        <input type="text" id="p-slug" placeholder="palace-blend">
-      </div>
-      <div class="form-group">
-        <label>Categorie *</label>
+      <div class="form-group"><label>Naam *</label><input type="text" id="p-name"></div>
+      <div class="form-group"><label>Slug *</label><input type="text" id="p-slug"></div>
+      <div class="form-group"><label>Categorie *</label>
         <select id="p-category">
           <option value="beans">Koffiebonen</option>
           <option value="machines">Machines</option>
           <option value="onderdelen">Onderdelen</option>
         </select>
       </div>
-      <div class="form-group">
-        <label>Prijs (€)</label>
-        <input type="number" id="p-price" placeholder="12.95" step="0.01">
+      <div class="form-group"><label>Prijs (€)</label><input type="number" id="p-price" step="0.01"></div>
+      <div class="form-group full"><label>Omschrijving</label><textarea id="p-description"></textarea></div>
+      <div class="form-group full"><label>Afbeelding URL</label><input type="text" id="p-image"></div>
+      <div class="form-group"><label>Op voorraad</label>
+        <select id="p-stock"><option value="true">Ja</option><option value="false">Nee</option></select>
       </div>
-      <div class="form-group full">
-        <label>Omschrijving</label>
-        <textarea id="p-description" placeholder="Korte productomschrijving…"></textarea>
-      </div>
-      <div class="form-group full">
-        <label>Afbeelding URL</label>
-        <input type="text" id="p-image" placeholder="/images/product.jpg">
-      </div>
-      <div class="form-group">
-        <label>Op voorraad</label>
-        <select id="p-stock">
-          <option value="true">Ja</option>
-          <option value="false">Nee</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Featured</label>
-        <select id="p-featured">
-          <option value="false">Nee</option>
-          <option value="true">Ja</option>
-        </select>
+      <div class="form-group"><label>Featured</label>
+        <select id="p-featured"><option value="false">Nee</option><option value="true">Ja</option></select>
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeProductModal()">Annuleren</button>
-      <button class="btn-primary" style="width:auto;padding:0.6rem 2rem;" onclick="saveProduct()">Opslaan</button>
+      <button class="btn-primary" style="width:auto;padding:0.6rem 2rem" onclick="saveProduct()">Opslaan</button>
     </div>
   </div>
 </div>
 
-<!-- ── TOAST ── -->
 <div class="toast" id="toast"></div>
 
 <script>
-// ── Auth ──────────────────────────────────────
 let token = sessionStorage.getItem('kp_admin_token') || '';
+let allOrders = [], allProducts = [], editingSlug = null;
 
 async function doLogin() {
   const pw = document.getElementById('pw-input').value;
-  const res = await fetch('/api/admin/orders?_check=1', {
-    headers: { Authorization: 'Bearer ' + pw }
-  });
-  if (res.ok || res.status === 200) {
+  const res = await fetch('/api/admin/orders', { headers: { Authorization: 'Bearer ' + pw } });
+  if (res.ok) {
     token = pw;
     sessionStorage.setItem('kp_admin_token', pw);
     showApp();
@@ -415,30 +230,25 @@ function doLogout() {
 }
 
 function api(path, opts = {}) {
-  return fetch(path, {
-    ...opts,
-    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token, ...(opts.headers||{}) }
-  });
+  return fetch(path, { ...opts, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token, ...(opts.headers || {}) } });
 }
 
 function showApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('admin-app').style.display = 'flex';
-  document.getElementById('header-date').textContent = new Date().toLocaleDateString('nl-NL', { weekday:'long', day:'numeric', month:'long' });
+  document.getElementById('header-date').textContent = new Date().toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
   loadOrders();
   loadSettings();
 }
 
-// ── Tabs ──────────────────────────────────────
-function showTab(name) {
+function showTab(name, el) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
-  event.currentTarget.classList.add('active');
+  if (el) el.classList.add('active');
   if (name === 'products') loadProducts();
 }
 
-// ── Toast ─────────────────────────────────────
 function toast(msg, ok = true) {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -448,224 +258,171 @@ function toast(msg, ok = true) {
   setTimeout(() => t.style.display = 'none', 3000);
 }
 
-// ── BESTELLINGEN ─────────────────────────────
-let allOrders = [];
-
+// BESTELLINGEN
 async function loadOrders() {
   const status = document.getElementById('status-filter').value;
-  const url = '/api/admin/orders' + (status ? '?status=' + status : '');
-  const res = await api(url);
-  if (!res.ok) { toast('Fout bij laden bestellingen', false); return; }
+  const res = await api('/api/admin/orders' + (status ? '?status=' + status : ''));
+  if (!res.ok) { toast('Fout bij laden', false); return; }
   allOrders = await res.json();
-
-  const sub = document.getElementById('orders-sub');
-  sub.textContent = `${allOrders.length} bestelling${allOrders.length !== 1 ? 'en' : ''} gevonden`;
-
-  // Stats
-  const paid   = allOrders.filter(o => o.status === 'paid').length;
-  const rev    = allOrders.filter(o => o.status === 'paid').reduce((s,o) => s + parseFloat(o.total||0), 0);
-  const pend   = allOrders.filter(o => o.status === 'pending').length;
-  document.getElementById('orders-stats').innerHTML = `
-    <div class="stat-card"><div class="stat-val">${allOrders.length}</div><div class="stat-label">Totaal orders</div></div>
-    <div class="stat-card"><div class="stat-val">${paid}</div><div class="stat-label">Betaald</div></div>
-    <div class="stat-card"><div class="stat-val">${pend}</div><div class="stat-label">In afwachting</div></div>
-    <div class="stat-card"><div class="stat-val">€ ${rev.toFixed(2).replace('.', ',')}</div><div class="stat-label">Omzet (betaald)</div></div>
-  `;
-
-  renderOrderTable(allOrders);
+  document.getElementById('orders-sub').textContent = allOrders.length + ' bestelling(en)';
+  const paid = allOrders.filter(o => o.status === 'paid');
+  const rev = paid.reduce((s, o) => s + parseFloat(o.total || 0), 0);
+  document.getElementById('orders-stats').innerHTML =
+    `<div class="stat-card"><div class="stat-val">${allOrders.length}</div><div class="stat-label">Totaal orders</div></div>` +
+    `<div class="stat-card"><div class="stat-val">${paid.length}</div><div class="stat-label">Betaald</div></div>` +
+    `<div class="stat-card"><div class="stat-val">${allOrders.filter(o=>o.status==='pending').length}</div><div class="stat-label">In afwachting</div></div>` +
+    `<div class="stat-card"><div class="stat-val">€ ${rev.toFixed(2).replace('.',',')}</div><div class="stat-label">Omzet betaald</div></div>`;
+  renderOrders(allOrders);
 }
 
-function renderOrderTable(orders) {
-  const tbody = document.getElementById('orders-tbody');
-  if (!orders.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:2rem;">Geen bestellingen gevonden</td></tr>';
-    return;
-  }
-  tbody.innerHTML = orders.map(o => {
+function renderOrders(orders) {
+  const tb = document.getElementById('orders-tbody');
+  if (!orders.length) { tb.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:2rem">Geen bestellingen</td></tr>'; return; }
+  tb.innerHTML = orders.map(o => {
     const c = typeof o.customer === 'string' ? JSON.parse(o.customer) : o.customer;
-    const name = c ? `${c.voornaam||''} ${c.achternaam||''}`.trim() || c.email || '—' : '—';
-    const date = new Date(o.created_at).toLocaleDateString('nl-NL', { day:'numeric', month:'short', year:'numeric' });
-    const statusClass = { paid:'badge-paid', pending:'badge-pending', failed:'badge-failed', cancelled:'badge-cancelled', shipped:'badge-shipped' }[o.status] || 'badge-pending';
-    const statusLabel = { paid:'Betaald', pending:'In afwachting', failed:'Mislukt', cancelled:'Geannuleerd', shipped:'Verzonden' }[o.status] || o.status;
+    const name = c ? ((c.voornaam || '') + ' ' + (c.achternaam || '')).trim() || c.email || '—' : '—';
+    const date = new Date(o.created_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
+    const sc = { paid: 'badge-paid', pending: 'badge-pending', failed: 'badge-failed', cancelled: 'badge-cancelled', shipped: 'badge-shipped' }[o.status] || 'badge-pending';
+    const sl = { paid: 'Betaald', pending: 'In afwachting', failed: 'Mislukt', cancelled: 'Geannuleerd', shipped: 'Verzonden' }[o.status] || o.status;
     return `<tr>
-      <td style="font-family:'Cormorant Garamond',serif;color:var(--gold);">${o.order_number}</td>
-      <td style="color:var(--muted);font-size:0.8rem;">${date}</td>
+      <td style="font-family:'Cormorant Garamond',serif;color:var(--gold)">${o.order_number}</td>
+      <td style="color:var(--muted);font-size:0.8rem">${date}</td>
       <td>${name}</td>
-      <td>€ ${parseFloat(o.total||0).toFixed(2).replace('.', ',')}</td>
-      <td><span class="badge ${statusClass}">${statusLabel}</span></td>
-      <td>
-        <select class="status-select" onchange="updateOrderStatus('${o.order_number}', this.value)">
-          <option value="">Wijzig status…</option>
-          <option value="pending">In afwachting</option>
-          <option value="paid">Betaald</option>
-          <option value="shipped">Verzonden</option>
-          <option value="cancelled">Geannuleerd</option>
-        </select>
-      </td>
+      <td>€ ${parseFloat(o.total||0).toFixed(2).replace('.',',')}</td>
+      <td><span class="badge ${sc}">${sl}</span></td>
+      <td><select class="status-select" onchange="updateOrderStatus('${o.order_number}',this.value)">
+        <option value="">Wijzig…</option>
+        <option value="pending">In afwachting</option>
+        <option value="paid">Betaald</option>
+        <option value="shipped">Verzonden</option>
+        <option value="cancelled">Geannuleerd</option>
+      </select></td>
     </tr>`;
   }).join('');
 }
 
-function filterOrderTable(q) {
-  const lower = q.toLowerCase();
-  const filtered = allOrders.filter(o => {
+function filterOrders(q) {
+  const l = q.toLowerCase();
+  renderOrders(allOrders.filter(o => {
     const c = typeof o.customer === 'string' ? JSON.parse(o.customer) : o.customer;
-    const name = c ? `${c.voornaam||''} ${c.achternaam||''} ${c.email||''}`.toLowerCase() : '';
-    return o.order_number.toLowerCase().includes(lower) || name.includes(lower);
-  });
-  renderOrderTable(filtered);
+    const t = (c ? Object.values(c).join(' ') : '') + ' ' + o.order_number;
+    return t.toLowerCase().includes(l);
+  }));
 }
 
 async function updateOrderStatus(orderNumber, status) {
   if (!status) return;
-  const res = await api(`/api/admin/orders/${orderNumber}/status`, {
-    method: 'PATCH', body: JSON.stringify({ status })
-  });
+  const res = await api(`/api/admin/orders/${orderNumber}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
   if (res.ok) { toast('✅ Status bijgewerkt'); loadOrders(); }
   else toast('Fout bij bijwerken', false);
 }
 
-// ── PRODUCTEN ────────────────────────────────
-let allProducts = [];
-let editingSlug = null;
-
+// PRODUCTEN
 async function loadProducts() {
   const res = await api('/api/admin/products');
   if (!res.ok) { toast('Fout bij laden producten', false); return; }
   allProducts = await res.json();
-  document.getElementById('products-sub').textContent = `${allProducts.length} producten`;
-  renderProductTable(allProducts);
+  document.getElementById('products-sub').textContent = allProducts.length + ' producten';
+  renderProducts(allProducts);
 }
 
-function renderProductTable(products) {
-  const tbody = document.getElementById('products-tbody');
-  if (!products.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:2rem;">Geen producten</td></tr>';
-    return;
-  }
-  tbody.innerHTML = products.map(p => {
-    const catLabel = { beans:'Koffiebonen', machines:'Machines', onderdelen:'Onderdelen' }[p.category] || p.category;
-    return `<tr>
-      <td><strong>${p.name}</strong><br><small style="color:var(--muted)">${p.slug}</small></td>
-      <td>${catLabel}</td>
-      <td>€ ${parseFloat(p.price||0).toFixed(2).replace('.', ',')}</td>
-      <td><span class="badge ${p.in_stock ? 'badge-paid' : 'badge-failed'}">${p.in_stock ? 'Op voorraad' : 'Uitverkocht'}</span></td>
-      <td>${p.featured ? '⭐ Ja' : '—'}</td>
-      <td style="display:flex;gap:0.5rem;">
-        <button class="btn-edit" onclick='openProductModal(${JSON.stringify(p)})'>Wijzig</button>
-        <button class="btn-danger" onclick="deleteProduct('${p.slug}')">Verwijder</button>
-      </td>
-    </tr>`;
-  }).join('');
+function renderProducts(products) {
+  const tb = document.getElementById('products-tbody');
+  if (!products.length) { tb.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:2rem">Geen producten</td></tr>'; return; }
+  const cats = { beans: 'Koffiebonen', machines: 'Machines', onderdelen: 'Onderdelen' };
+  tb.innerHTML = products.map(p => `<tr>
+    <td><strong>${p.name}</strong><br><small style="color:var(--muted)">${p.slug}</small></td>
+    <td>${cats[p.category] || p.category}</td>
+    <td>€ ${parseFloat(p.price||0).toFixed(2).replace('.',',')}</td>
+    <td><span class="badge ${p.in_stock?'badge-paid':'badge-failed'}">${p.in_stock?'Ja':'Nee'}</span></td>
+    <td>${p.featured ? '⭐' : '—'}</td>
+    <td style="display:flex;gap:0.5rem">
+      <button class="btn-edit" onclick='openProductModal(${JSON.stringify(p)})'>Wijzig</button>
+      <button class="btn-danger" onclick="deleteProduct('${p.slug}')">Verwijder</button>
+    </td>
+  </tr>`).join('');
 }
 
-function filterProductTable(q) {
-  const lower = q.toLowerCase();
-  renderProductTable(allProducts.filter(p => p.name.toLowerCase().includes(lower) || p.slug.toLowerCase().includes(lower)));
+function filterProducts(q) {
+  const l = q.toLowerCase();
+  renderProducts(allProducts.filter(p => p.name.toLowerCase().includes(l) || p.slug.toLowerCase().includes(l)));
 }
 
-function openProductModal(product) {
-  editingSlug = product ? product.slug : null;
-  document.getElementById('modal-title').textContent = product ? 'Product wijzigen' : 'Nieuw product';
-  document.getElementById('p-name').value        = product?.name        || '';
-  document.getElementById('p-slug').value        = product?.slug        || '';
-  document.getElementById('p-slug-orig').value   = product?.slug        || '';
-  document.getElementById('p-category').value    = product?.category    || 'beans';
-  document.getElementById('p-price').value       = product?.price       || '';
-  document.getElementById('p-description').value = product?.description || '';
-  document.getElementById('p-image').value       = product?.image       || '';
-  document.getElementById('p-stock').value       = product?.in_stock !== false ? 'true' : 'false';
-  document.getElementById('p-featured').value    = product?.featured ? 'true' : 'false';
+function openProductModal(p) {
+  editingSlug = p ? p.slug : null;
+  document.getElementById('modal-title').textContent = p ? 'Product wijzigen' : 'Nieuw product';
+  document.getElementById('p-name').value = p?.name || '';
+  document.getElementById('p-slug').value = p?.slug || '';
+  document.getElementById('p-slug-orig').value = p?.slug || '';
+  document.getElementById('p-category').value = p?.category || 'beans';
+  document.getElementById('p-price').value = p?.price || '';
+  document.getElementById('p-description').value = p?.description || '';
+  document.getElementById('p-image').value = p?.image || '';
+  document.getElementById('p-stock').value = p?.in_stock !== false ? 'true' : 'false';
+  document.getElementById('p-featured').value = p?.featured ? 'true' : 'false';
   document.getElementById('product-modal').classList.add('open');
-
-  // Auto-slug from name
-  if (!product) {
-    document.getElementById('p-name').oninput = e => {
-      document.getElementById('p-slug').value = e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    };
-  } else {
-    document.getElementById('p-name').oninput = null;
-  }
+  document.getElementById('p-name').oninput = !p ? e => {
+    document.getElementById('p-slug').value = e.target.value.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  } : null;
 }
 
-function closeProductModal() {
-  document.getElementById('product-modal').classList.remove('open');
-  editingSlug = null;
-}
+function closeProductModal() { document.getElementById('product-modal').classList.remove('open'); }
 
 async function saveProduct() {
   const body = {
-    slug:        document.getElementById('p-slug').value.trim(),
-    name:        document.getElementById('p-name').value.trim(),
-    category:    document.getElementById('p-category').value,
-    price:       parseFloat(document.getElementById('p-price').value) || 0,
+    slug: document.getElementById('p-slug').value.trim(),
+    name: document.getElementById('p-name').value.trim(),
+    category: document.getElementById('p-category').value,
+    price: parseFloat(document.getElementById('p-price').value) || 0,
     description: document.getElementById('p-description').value.trim(),
-    image:       document.getElementById('p-image').value.trim(),
-    in_stock:    document.getElementById('p-stock').value === 'true',
-    featured:    document.getElementById('p-featured').value === 'true',
+    image: document.getElementById('p-image').value.trim(),
+    in_stock: document.getElementById('p-stock').value === 'true',
+    featured: document.getElementById('p-featured').value === 'true',
   };
   if (!body.slug || !body.name) { toast('Naam en slug zijn verplicht', false); return; }
-
-  const url    = editingSlug ? `/api/admin/products/${editingSlug}` : '/api/admin/products';
-  const method = editingSlug ? 'PUT' : 'POST';
-  const res    = await api(url, { method, body: JSON.stringify(body) });
-
-  if (res.ok) {
-    toast(editingSlug ? '✅ Product bijgewerkt' : '✅ Product aangemaakt');
-    closeProductModal();
-    loadProducts();
-  } else {
-    const err = await res.json();
-    toast(err.error || 'Fout bij opslaan', false);
-  }
+  const res = await api(editingSlug ? `/api/admin/products/${editingSlug}` : '/api/admin/products', {
+    method: editingSlug ? 'PUT' : 'POST', body: JSON.stringify(body)
+  });
+  if (res.ok) { toast(editingSlug ? '✅ Bijgewerkt' : '✅ Aangemaakt'); closeProductModal(); loadProducts(); }
+  else { const e = await res.json(); toast(e.error || 'Fout bij opslaan', false); }
 }
 
 async function deleteProduct(slug) {
-  if (!confirm(`Weet u zeker dat u "${slug}" wilt verwijderen?`)) return;
-  const res = await api(`/api/admin/products/${slug}`, { method: 'DELETE' });
-  if (res.ok) { toast('✅ Product verwijderd'); loadProducts(); }
+  if (!confirm('Weet u zeker dat u "' + slug + '" wilt verwijderen?')) return;
+  const res = await api('/api/admin/products/' + slug, { method: 'DELETE' });
+  if (res.ok) { toast('✅ Verwijderd'); loadProducts(); }
   else toast('Fout bij verwijderen', false);
 }
 
-// ── INSTELLINGEN ─────────────────────────────
+// INSTELLINGEN
 async function loadSettings() {
   const res = await fetch('/api/settings');
   if (!res.ok) return;
   const s = await res.json();
-  document.getElementById('s-telefoon').value       = s.telefoon       || '';
-  document.getElementById('s-whatsapp').value       = s.whatsapp       || '';
-  document.getElementById('s-email').value          = s.email          || '';
-  document.getElementById('s-adres').value          = s.adres          || '';
-  document.getElementById('s-openingstijden').value = s.openingstijden || '';
+  ['telefoon','whatsapp','email','adres','openingstijden'].forEach(k => {
+    const el = document.getElementById('s-' + k);
+    if (el) el.value = s[k] || '';
+  });
 }
 
 async function saveSettings() {
-  const body = {
-    telefoon:       document.getElementById('s-telefoon').value.trim(),
-    whatsapp:       document.getElementById('s-whatsapp').value.trim(),
-    email:          document.getElementById('s-email').value.trim(),
-    adres:          document.getElementById('s-adres').value.trim(),
-    openingstijden: document.getElementById('s-openingstijden').value.trim(),
-  };
+  const body = {};
+  ['telefoon','whatsapp','email','adres','openingstijden'].forEach(k => {
+    const el = document.getElementById('s-' + k);
+    if (el) body[k] = el.value.trim();
+  });
   const res = await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify(body) });
   const msg = document.getElementById('settings-msg');
   if (res.ok) {
-    toast('✅ Instellingen opgeslagen');
-    msg.textContent = '✅ Opgeslagen';
+    toast('✅ Opgeslagen');
+    msg.textContent = '✅ Instellingen opgeslagen';
     msg.style.color = 'var(--green)';
     msg.style.display = 'block';
     setTimeout(() => msg.style.display = 'none', 3000);
-  } else {
-    toast('Fout bij opslaan', false);
-  }
+  } else toast('Fout bij opslaan', false);
 }
 
-// ── Init ──────────────────────────────────────
-if (token) {
-  showApp();
-} else {
-  document.getElementById('login-screen').style.display = 'flex';
-}
+if (token) showApp();
 </script>
 </body>
 </html>
