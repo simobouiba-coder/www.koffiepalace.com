@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bestellingen – Admin</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: Georgia, serif;
+      background: #0a0a0a;
+      color: #f5f0e8;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #c9a84c;
+      margin-bottom: 30px;
+    }
+    .nav {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 30px;
+      border-bottom: 1px solid #333;
+      padding-bottom: 20px;
+    }
+    .nav a {
+      color: #c9a84c;
+      text-decoration: none;
+      padding: 10px 20px;
+      border: 1px solid #c9a84c;
+      border-radius: 4px;
+    }
+    .nav a:hover {
+      background: #c9a84c;
+      color: #0a0a0a;
+    }
+    .section {
+      background: #1a1a1a;
+      padding: 30px;
+      border-radius: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #333;
+    }
+    th {
+      background: #0a0a0a;
+      color: #c9a84c;
+      font-weight: bold;
+    }
+    tr:hover {
+      background: #0a0a0a;
+    }
+    .status {
+      padding: 4px 8px;
+      border-radius: 3px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .status.pending {
+      background: #f0ad4e;
+      color: #0a0a0a;
+    }
+    .status.paid {
+      background: #5cb85c;
+      color: #fff;
+    }
+    .status.failed {
+      background: #c9534c;
+      color: #fff;
+    }
+    .btn-small {
+      background: #333;
+      color: #f5f0e8;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .btn-small:hover {
+      background: #444;
+    }
+    .loading {
+      color: #888;
+      text-align: center;
+      padding: 40px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📋 Bestellingen</h1>
+    
+    <div class="nav">
+      <a href="/admin">Dashboard</a>
+      <a href="/admin/products">Producten</a>
+      <a href="/admin/orders">Bestellingen</a>
+      <a href="/admin/settings">Instellingen</a>
+    </div>
+
+    <div class="section">
+      <div id="ordersList" class="loading">Laden...</div>
+    </div>
+  </div>
+
+  <script>
+    const ADMIN_PASSWORD = prompt('Admin wachtwoord:') || 'admin';
+
+    async function loadOrders() {
+      try {
+        const res = await fetch('/api/admin/orders', {
+          headers: { 'Authorization': `Bearer ${ADMIN_PASSWORD}` }
+        });
+        if (!res.ok) throw new Error('Niet geautoriseerd');
+        const orders = await res.json();
+        
+        if (orders.length === 0) {
+          document.getElementById('ordersList').innerHTML = '<p style="color:#888;">Geen bestellingen gevonden.</p>';
+          return;
+        }
+
+        let html = '<table><thead><tr><th>Bestelling</th><th>Klant</th><th>Totaal</th><th>Status</th><th>Datum</th><th>Acties</th></tr></thead><tbody>';
+        orders.forEach(o => {
+          const customer = typeof o.customer === 'string' ? JSON.parse(o.customer) : o.customer;
+          const statusClass = o.status === 'paid' ? 'paid' : o.status === 'failed' ? 'failed' : 'pending';
+          const date = new Date(o.created_at).toLocaleDateString('nl-NL');
+          
+          html += `<tr>
+            <td><strong>${o.order_number}</strong></td>
+            <td>${customer.voornaam || 'Onbekend'}</td>
+            <td>€ ${parseFloat(o.total).toFixed(2)}</td>
+            <td><span class="status ${statusClass}">${o.status.toUpperCase()}</span></td>
+            <td>${date}</td>
+            <td>
+              <button class="btn-small" onclick="viewOrder('${o.order_number}')">Details</button>
+            </td>
+          </tr>`;
+        });
+        html += '</tbody></table>';
+        document.getElementById('ordersList').innerHTML = html;
+      } catch (err) {
+        document.getElementById('ordersList').innerHTML = `<div class="loading" style="color:#c9534c;">Fout: ${err.message}</div>`;
+      }
+    }
+
+    function viewOrder(orderNumber) {
+      alert(`Details voor ${orderNumber} – functie komt binnenkort!`);
+    }
+
+    loadOrders();
+  </script>
+</body>
+</html>
+

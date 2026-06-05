@@ -211,6 +211,23 @@ function adminAuth(req, res, next) {
   next();
 }
 
+// ─── ADMIN PAGINA'S ───────────────────────────────────────────────────────────
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
+app.get('/admin/products', (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin-products.html'));
+});
+
+app.get('/admin/orders', (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin-orders.html'));
+});
+
+app.get('/admin/settings', (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin-settings.html'));
+});
+
 // ─── API: Instellingen (publiek) ─────────────────────────────────────────────
 app.get('/api/settings', async (req, res) => {
   try {
@@ -507,34 +524,20 @@ app.post('/api/contact', async (req, res) => {
 });
 
 // ─── Health check ────────────────────────────────────────────────────────────
-app.get('/health', async (req, res) => {
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// ─── Server starten ──────────────────────────────────────────────────────────
+(async () => {
   try {
-    await pool.query('SELECT 1');
-    res.json({ status: 'ok', db: 'connected', timestamp: new Date().toISOString() });
-  } catch (err) {
-    res.status(500).json({ status: 'error', db: 'disconnected' });
-  }
-});
-
-// ─── Catch-all ───────────────────────────────────────────────────────────────
-app.get('*', (req, res) => {
-  if (req.path.startsWith('/api/')) {
-    return res.status(404).json({ error: 'Endpoint niet gevonden' });
-  }
-  if (req.path === '/admin' || req.path === '/admin/') {
-    return res.sendFile(path.join(__dirname, 'admin.html'));
-  }
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-// ─── Start ───────────────────────────────────────────────────────────────────
-initDB()
-  .then(() => {
+    await initDB();
     app.listen(PORT, () => {
-      console.log(`🚀 Koffie Palace server draait op poort ${PORT}`);
+      console.log(`🚀 Server draait op http://localhost:${PORT}`);
     });
-  })
-  .catch(err => {
-    console.error('❌ Database initialisatie mislukt:', err);
+  } catch (err) {
+    console.error('❌ Startup fout:', err);
     process.exit(1);
-  });
+  }
+})();
+
