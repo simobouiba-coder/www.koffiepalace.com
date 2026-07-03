@@ -893,6 +893,10 @@
 </style>
 </head>
 <body>
+<div class="image-lightbox" id="image-lightbox" onclick="closeImageLightbox()">
+  <button class="image-lightbox-close" onclick="closeImageLightbox(event)">&times;</button>
+  <img id="image-lightbox-img" src="" alt="">
+</div>
 
 <!-- NAVIGATIE -->
 <nav>
@@ -2227,8 +2231,52 @@
     color: var(--muted);
     line-height: 1.7;
     font-weight: 300;
-    margin-bottom: 1rem;
+    margin-bottom: 0.4rem;
     flex: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .mo-desc.expanded {
+    -webkit-line-clamp: unset;
+    overflow: visible;
+  }
+
+  .mo-readmore-btn {
+    background: none;
+    border: none;
+    color: var(--gold);
+    font-size: 0.78rem;
+    font-family: 'Jost', sans-serif;
+    cursor: pointer;
+    padding: 0;
+    margin-bottom: 1rem;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    align-self: flex-start;
+  }
+
+  .mo-img-box[data-clickable] { cursor: zoom-in; }
+
+  .image-lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(10,8,6,0.92);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 2rem;
+    cursor: zoom-out;
+  }
+  .image-lightbox.open { display: flex; }
+  .image-lightbox img { max-width: 90vw; max-height: 88vh; object-fit: contain; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+  .image-lightbox-close {
+    position: absolute; top: 1.5rem; right: 1.8rem;
+    color: var(--white); font-size: 1.8rem; cursor: pointer;
+    background: none; border: none; line-height: 1;
   }
 
   .mo-specs {
@@ -2504,6 +2552,34 @@ fetch('/api/products')
   })
   .catch(() => {});
 
+// ── Foto uitvergroten (lightbox) ──────
+function openImageLightbox(src, alt) {
+  const box = document.getElementById('image-lightbox');
+  document.getElementById('image-lightbox-img').src = src;
+  document.getElementById('image-lightbox-img').alt = alt || '';
+  box.classList.add('open');
+}
+function closeImageLightbox(e) {
+  if (e) e.stopPropagation();
+  document.getElementById('image-lightbox').classList.remove('open');
+}
+
+// ── Lange omschrijving in/uitklappen ──────
+function toggleDesc(id, btn) {
+  const el = document.getElementById(id);
+  const expanded = el.classList.toggle('expanded');
+  btn.textContent = expanded ? 'Minder tonen' : 'Lees meer';
+}
+
+// ── Veilig binnen een JS-string in een onclick-attribuut plaatsen ──
+function escapeJs(str) {
+  return String(str == null ? '' : str)
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, '\\n');
+}
+
 // ── Veilig HTML-tekst invoegen (voorkomt kapotte layout/injectie) ──
 function escapeHtml(str) {
   const div = document.createElement('div');
@@ -2544,11 +2620,13 @@ function renderDynamicProducts(products) {
       const card = document.createElement('div');
       card.className = 'mo-card';
       card.setAttribute('data-cat', 'thuis zakelijk horeca');
+      const descId = `mo-desc-${p.id}`;
       card.innerHTML = `
-        <div class="mo-img-box" style="${imgHtml ? 'padding:0;overflow:hidden;' : ''}">${imgHtml || escapeHtml(cat.emoji)}</div>
+        <div class="mo-img-box" ${imgHtml ? 'data-clickable style="padding:0;overflow:hidden;cursor:zoom-in;"' : ''} ${imgHtml ? `onclick="openImageLightbox('${escapeJs(cat.image)}', '${escapeJs(cat.name)}')"` : ''}>${imgHtml || escapeHtml(cat.emoji)}</div>
         <div class="mo-body">
           <h3 class="mo-name">${escapeHtml(cat.name)}</h3>
-          <p class="mo-desc">${escapeHtml(cat.description || '')}</p>
+          <p class="mo-desc" id="${descId}">${escapeHtml(cat.description || '')}</p>
+          <button class="mo-readmore-btn" onclick="toggleDesc('${descId}', this)">Lees meer</button>
           <div class="mo-footer">
             <div class="mo-price">€ ${cat.price.toFixed(2).replace('.', ',')}</div>
             <button class="mo-cart-btn" onclick="addToCart(${p.id})">🛒 In winkelwagen</button>
@@ -2559,11 +2637,13 @@ function renderDynamicProducts(products) {
     } else if (cat.type === 'onderdeel' && onderdelenGrid) {
       const card = document.createElement('div');
       card.className = 'onderdeel-card';
+      const descId = `od-desc-${p.id}`;
       card.innerHTML = `
-        ${imgHtml}
+        ${imgHtml ? `<div style="cursor:zoom-in" onclick="openImageLightbox('${escapeJs(cat.image)}', '${escapeJs(cat.name)}')">${imgHtml}</div>` : ''}
         ${imgHtml ? '' : `<span class="onderdeel-icon">${escapeHtml(cat.emoji)}</span>`}
         <h4>${escapeHtml(cat.name)}</h4>
-        <p>${escapeHtml(cat.description || '')}</p>
+        <p class="mo-desc" id="${descId}" style="text-align:left;">${escapeHtml(cat.description || '')}</p>
+        <button class="mo-readmore-btn" onclick="toggleDesc('${descId}', this)">Lees meer</button>
         <div class="onderdeel-price">Vanaf € ${cat.price.toFixed(2).replace('.', ',')}</div>
         <button class="onderdeel-btn" onclick="addToCart(${p.id})">Bestellen</button>
       `;
