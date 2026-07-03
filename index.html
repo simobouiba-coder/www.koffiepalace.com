@@ -2260,6 +2260,17 @@
 
   .mo-img-box[data-clickable] { cursor: zoom-in; }
 
+  .product-img {
+    object-fit: contain !important;
+    object-position: center;
+    background: linear-gradient(145deg, var(--surface2), #1a1620);
+    transition: transform 0.4s ease;
+  }
+  .mo-img-box:hover .product-img,
+  .onderdeel-card .product-img:hover {
+    transform: scale(1.08);
+  }
+
   .image-lightbox {
     position: fixed;
     inset: 0;
@@ -2600,7 +2611,7 @@ function renderDynamicProducts(products) {
     const cat = catalog[p.id];
     if (!cat) return;
     const imgHtml = cat.image
-      ? `<img src="${escapeHtml(cat.image)}" alt="${escapeHtml(cat.name)}" style="width:100%;height:150px;object-fit:cover;display:block;">`
+      ? `<img class="product-img" src="${escapeHtml(cat.image)}" alt="${escapeHtml(cat.name)}" style="width:100%;height:150px;display:block;">`
       : '';
 
     if (cat.type === 'bonen' && beansGrid) {
