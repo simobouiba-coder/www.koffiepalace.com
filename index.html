@@ -2472,13 +2472,22 @@ fetch('/api/products')
   .then(r => r.json())
   .then(products => {
     products.forEach(p => {
-      const type = p.category === 'koffie' ? 'bonen' : p.category === 'onderdelen' ? 'onderdeel' : 'machine';
+      const type = p.category === 'beans' ? 'bonen' : p.category === 'onderdelen' ? 'onderdeel' : 'machine';
+      let prices;
+      if (type === 'bonen') {
+        if (Array.isArray(p.variants) && p.variants.length) {
+          prices = {};
+          p.variants.forEach(v => { if (v.size) prices[v.size] = parseFloat(v.price) || 0; });
+        } else {
+          prices = { '500g': parseFloat(p.price) || 0, '1kg': (parseFloat(p.price) * 1.8) || 0 };
+        }
+      }
       catalog[p.id] = {
         name: p.name,
         emoji: p.emoji || '☕',
         type: type,
         price: parseFloat(p.price) || 0,
-        prices: type === 'bonen' ? { '500g': parseFloat(p.price) || 0, '1kg': (parseFloat(p.price) * 1.8) || 0 } : undefined,
+        prices: prices,
         subtitle: p.subtitle,
         description: p.description,
         label: p.label,
