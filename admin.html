@@ -78,6 +78,10 @@ select.status-select{background:var(--surface2);border:1px solid var(--border);c
 .settings-fields .full{grid-column:1/-1}
 .save-btn{margin-top:1.5rem;background:var(--gold);color:var(--black);border:none;font-family:'Jost',sans-serif;font-size:0.78rem;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;padding:0.75rem 2rem;cursor:pointer}
 .save-btn:hover{background:var(--gold-light)}
+.image-upload-box{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0.6rem;border:1px dashed var(--border);background:var(--deep);min-height:140px;cursor:pointer;transition:border-color 0.2s;padding:1rem;text-align:center}
+.image-upload-box:hover{border-color:var(--gold)}
+.image-upload-box img{max-width:100%;max-height:180px;object-fit:contain}
+#image-upload-placeholder{font-size:0.8rem;color:var(--muted);letter-spacing:0.05em}
 @media(max-width:640px){nav.sidebar{display:none}.form-grid,.settings-fields{grid-template-columns:1fr}.form-grid .full,.settings-fields .full{grid-column:1}}
 </style>
 </head>
@@ -145,7 +149,7 @@ select.status-select{background:var(--surface2);border:1px solid var(--border);c
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Naam</th><th>Categorie</th><th>Prijs</th><th>Voorraad</th><th>Featured</th><th>Acties</th></tr></thead>
+            <thead><tr><th>Foto</th><th>Naam</th><th>Categorie</th><th>Prijs</th><th>Voorraad</th><th>Featured</th><th>Acties</th></tr></thead>
             <tbody id="products-tbody"></tbody>
           </table>
         </div>
@@ -186,9 +190,23 @@ select.status-select{background:var(--surface2);border:1px solid var(--border);c
           <option value="onderdelen">Onderdelen</option>
         </select>
       </div>
-      <div class="form-group"><label>Prijs (€)</label><input type="number" id="p-price" step="0.01"></div>
+      <div class="form-group"><label>Prijs (€) <span style="font-weight:400;text-transform:none;letter-spacing:0">— basis / vanafprijs</span></label><input type="number" id="p-price" step="0.01"></div>
+      <div class="form-group full" id="variants-section" style="display:none">
+        <label>Prijzen per gewicht</label>
+        <div id="variants-rows" style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.3rem"></div>
+        <button type="button" class="btn-action" style="margin-top:0.6rem;padding:0.4rem 0.9rem;font-size:0.7rem" onclick="addVariantRow('', '')">+ Gewicht toevoegen</button>
+      </div>
       <div class="form-group full"><label>Omschrijving</label><textarea id="p-description"></textarea></div>
-      <div class="form-group full"><label>Afbeelding URL</label><input type="text" id="p-image"></div>
+      <div class="form-group full">
+        <label>Productfoto</label>
+        <div class="image-upload-box" id="image-upload-box" onclick="document.getElementById('p-image-file').click()">
+          <img id="p-image-preview" style="display:none">
+          <span id="image-upload-placeholder">📷 Klik om een foto te kiezen</span>
+        </div>
+        <input type="file" id="p-image-file" accept="image/*" style="display:none" onchange="handleImageUpload(event)">
+        <input type="hidden" id="p-image">
+        <div id="image-upload-status" style="font-size:0.75rem;color:var(--muted);margin-top:0.4rem"></div>
+      </div>
       <div class="form-group"><label>Op voorraad</label>
         <select id="p-stock"><option value="true">Ja</option><option value="false">Nee</option></select>
       </div>
@@ -328,9 +346,10 @@ async function loadProducts() {
 
 function renderProducts(products) {
   const tb = document.getElementById('products-tbody');
-  if (!products.length) { tb.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:2rem">Geen producten</td></tr>'; return; }
+  if (!products.length) { tb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem">Geen producten</td></tr>'; return; }
   const cats = { beans: 'Koffiebonen', machines: 'Machines', onderdelen: 'Onderdelen' };
   tb.innerHTML = products.map(p => `<tr>
+    <td>${p.image ? `<img src="${p.image}" style="width:44px;height:44px;object-fit:cover;border:1px solid var(--border)">` : '<span style="color:var(--muted)">—</span>'}</td>
     <td><strong>${p.name}</strong><br><small style="color:var(--muted)">${p.slug}</small></td>
     <td>${cats[p.category] || p.category}</td>
     <td>€ ${parseFloat(p.price||0).toFixed(2).replace('.',',')}</td>
@@ -360,26 +379,121 @@ function openProductModal(p) {
   document.getElementById('p-image').value = p?.image || '';
   document.getElementById('p-stock').value = p?.in_stock !== false ? 'true' : 'false';
   document.getElementById('p-featured').value = p?.featured ? 'true' : 'false';
+  document.getElementById('image-upload-status').textContent = '';
+  document.getElementById('p-image-file').value = '';
+
+  const rows = document.getElementById('variants-rows');
+  rows.innerHTML = '';
+  const existing = Array.isArray(p?.variants) ? p.variants : [];
+  if (existing.length) {
+    existing.forEach(v => addVariantRow(v.size || v.label || v.type || v.pack || '', v.price ?? ''));
+  } else {
+    addVariantRow('250g', '');
+    addVariantRow('500g', '');
+    addVariantRow('1kg', '');
+  }
+  toggleVariantsSection();
+  const preview = document.getElementById('p-image-preview');
+  const placeholder = document.getElementById('image-upload-placeholder');
+  if (p?.image) {
+    preview.src = p.image;
+    preview.style.display = 'block';
+    placeholder.style.display = 'none';
+  } else {
+    preview.style.display = 'none';
+    placeholder.style.display = 'block';
+  }
   document.getElementById('product-modal').classList.add('open');
   document.getElementById('p-name').oninput = !p ? e => {
     document.getElementById('p-slug').value = e.target.value.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
   } : null;
 }
 
+// ── Foto uploaden: comprimeren in de browser en als data-URL opslaan ──
+function handleImageUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const status = document.getElementById('image-upload-status');
+  status.textContent = 'Foto verwerken…';
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX_DIM = 1200;
+      let { width, height } = img;
+      if (width > height && width > MAX_DIM) { height = Math.round(height * MAX_DIM / width); width = MAX_DIM; }
+      else if (height > MAX_DIM) { width = Math.round(width * MAX_DIM / height); height = MAX_DIM; }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+
+      document.getElementById('p-image').value = dataUrl;
+      const preview = document.getElementById('p-image-preview');
+      preview.src = dataUrl;
+      preview.style.display = 'block';
+      document.getElementById('image-upload-placeholder').style.display = 'none';
+
+      const sizeKb = Math.round((dataUrl.length * 0.75) / 1024);
+      status.textContent = `✅ Foto klaar (${sizeKb} KB) — wordt opgeslagen bij "Opslaan"`;
+    };
+    img.onerror = () => { status.textContent = 'Kon deze afbeelding niet lezen.'; };
+    img.src = e.target.result;
+  };
+  reader.onerror = () => { status.textContent = 'Fout bij inlezen bestand.'; };
+  reader.readAsDataURL(file);
+}
+
 function closeProductModal() { document.getElementById('product-modal').classList.remove('open'); }
 
+function toggleVariantsSection() {
+  const isBeans = document.getElementById('p-category').value === 'beans';
+  document.getElementById('variants-section').style.display = isBeans ? 'block' : 'none';
+}
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('p-category').addEventListener('change', toggleVariantsSection);
+});
+
+function addVariantRow(size, price) {
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:0.5rem;align-items:center';
+  row.innerHTML = `
+    <input type="text" placeholder="bv. 250g" value="${size}" style="flex:1;background:var(--deep);border:1px solid var(--border);color:var(--white);font-family:'Jost',sans-serif;font-size:0.85rem;padding:0.55rem 0.7rem;outline:none" class="variant-size">
+    <input type="number" step="0.01" placeholder="Prijs €" value="${price}" style="flex:1;background:var(--deep);border:1px solid var(--border);color:var(--white);font-family:'Jost',sans-serif;font-size:0.85rem;padding:0.55rem 0.7rem;outline:none" class="variant-price">
+    <button type="button" class="btn-danger" onclick="this.parentElement.remove()">✕</button>
+  `;
+  document.getElementById('variants-rows').appendChild(row);
+}
+
+function collectVariants() {
+  const rows = document.querySelectorAll('#variants-rows > div');
+  const variants = [];
+  rows.forEach(r => {
+    const size = r.querySelector('.variant-size').value.trim();
+    const price = parseFloat(r.querySelector('.variant-price').value);
+    if (size && !isNaN(price)) variants.push({ size, price });
+  });
+  return variants;
+}
+
 async function saveProduct() {
+  const category = document.getElementById('p-category').value;
   const body = {
     slug: document.getElementById('p-slug').value.trim(),
     name: document.getElementById('p-name').value.trim(),
-    category: document.getElementById('p-category').value,
+    category: category,
     price: parseFloat(document.getElementById('p-price').value) || 0,
     description: document.getElementById('p-description').value.trim(),
     image: document.getElementById('p-image').value.trim(),
     in_stock: document.getElementById('p-stock').value === 'true',
     featured: document.getElementById('p-featured').value === 'true',
+    variants: category === 'beans' ? collectVariants() : null,
   };
   if (!body.slug || !body.name) { toast('Naam en slug zijn verplicht', false); return; }
+  if (category === 'beans' && (!body.variants || !body.variants.length)) { toast('Vul minimaal 1 gewicht + prijs in', false); return; }
   const res = await api(editingSlug ? `/api/admin/products/${editingSlug}` : '/api/admin/products', {
     method: editingSlug ? 'PUT' : 'POST', body: JSON.stringify(body)
   });
