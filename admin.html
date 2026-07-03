@@ -356,7 +356,7 @@ function renderProducts(products) {
     <td><span class="badge ${p.in_stock?'badge-paid':'badge-failed'}">${p.in_stock?'Ja':'Nee'}</span></td>
     <td>${p.featured ? '⭐' : '—'}</td>
     <td style="display:flex;gap:0.5rem">
-      <button class="btn-edit" onclick='openProductModal(${JSON.stringify(p)})'>Wijzig</button>
+      <button class="btn-edit" onclick="openProductModalBySlug('${p.slug}')">Wijzig</button>
       <button class="btn-danger" onclick="deleteProduct('${p.slug}')">Verwijder</button>
     </td>
   </tr>`).join('');
@@ -365,6 +365,11 @@ function renderProducts(products) {
 function filterProducts(q) {
   const l = q.toLowerCase();
   renderProducts(allProducts.filter(p => p.name.toLowerCase().includes(l) || p.slug.toLowerCase().includes(l)));
+}
+
+function openProductModalBySlug(slug) {
+  const p = allProducts.find(prod => prod.slug === slug);
+  openProductModal(p || null);
 }
 
 function openProductModal(p) {
