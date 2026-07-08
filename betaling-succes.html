@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bestelling bevestigd – Koffie Palace</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  :root{
+    --black:#1C1510; --gold:#C9A84C; --gold-light:#E2C47A;
+    --white:#F5F0E8; --muted:rgba(245,240,232,0.6); --border:rgba(201,168,76,0.25);
+  }
+  body{
+    background:var(--black); color:var(--white); font-family:'Jost',sans-serif;
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    padding:2rem; line-height:1.7;
+  }
+  .card{
+    max-width:520px; width:100%; text-align:center;
+    border:1px solid var(--border); border-radius:4px;
+    padding:3rem 2.5rem; background:rgba(255,255,255,0.02);
+  }
+  h1{
+    font-family:'Cormorant Garamond',serif; color:var(--gold-light);
+    font-size:2rem; font-weight:700; margin-bottom:0.75rem; letter-spacing:0.02em;
+  }
+  .sub{color:var(--muted); font-size:0.95rem; margin-bottom:2rem;}
+  .order-nr{
+    font-family:'Cormorant Garamond',serif; color:var(--gold);
+    font-size:1.3rem; letter-spacing:0.08em; margin-bottom:1.5rem;
+  }
+  .state{font-size:0.85rem; letter-spacing:0.04em; color:var(--muted); min-height:1.4em;}
+  .spinner{
+    width:22px; height:22px; margin:0 auto 1.2rem;
+    border:2px solid var(--border); border-top-color:var(--gold);
+    border-radius:50%; animation:spin 0.9s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .icon-ok{font-size:2.2rem; margin-bottom:1rem;}
+  a.home{
+    display:inline-block; margin-top:2rem; color:var(--gold);
+    text-decoration:none; font-size:0.8rem; letter-spacing:0.14em;
+    text-transform:uppercase; border-bottom:1px solid transparent;
+  }
+  a.home:hover{border-color:var(--gold);}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div id="loading">
+      <div class="spinner"></div>
+      <h1>Betaling controleren…</h1>
+      <p class="sub">Een moment geduld, we bevestigen uw bestelling.</p>
+    </div>
+
+    <div id="result" style="display:none;">
+      <div class="icon-ok" id="icon">✅</div>
+      <h1 id="title">Bedankt voor uw bestelling!</h1>
+      <p class="sub" id="message">We hebben uw betaling ontvangen en sturen u een bevestiging per e-mail.</p>
+      <div class="order-nr" id="order-nr"></div>
+      <div class="state" id="state"></div>
+      <a href="/" class="home">← Terug naar Koffie Palace</a>
+    </div>
+  </div>
+
+<script>
+(function () {
+  const params = new URLSearchParams(window.location.search);
+  const orderNumber = params.get('order');
+  const loadingEl = document.getElementById('loading');
+  const resultEl  = document.getElementById('result');
+  const iconEl    = document.getElementById('icon');
+  const titleEl   = document.getElementById('title');
+  const messageEl = document.getElementById('message');
+  const orderNrEl = document.getElementById('order-nr');
+  const stateEl   = document.getElementById('state');
+
+  function showResult(status, confirmationSent) {
+    loadingEl.style.display = 'none';
+    resultEl.style.display = 'block';
+    orderNrEl.textContent = orderNumber ? 'Bestelling ' + orderNumber : '';
+
+    if (status === 'paid') {
+      iconEl.textContent = '✅';
+      titleEl.textContent = 'Bedankt voor uw bestelling!';
+      messageEl.textContent = 'We hebben uw betaling ontvangen.';
+      stateEl.textContent = confirmationSent
+        ? 'Een bevestiging is naar uw e-mailadres verstuurd.'
+        : 'De bevestigingsmail wordt nog verstuurd — dit kan enkele minuten duren.';
+    } else if (status === 'failed' || status === 'cancelled') {
+      iconEl.textContent = '⚠️';
+      titleEl.textContent = 'Betaling niet gelukt';
+      messageEl.textContent = 'De betaling is geannuleerd of mislukt. Er is niets afgeschreven voor deze poging.';
+      stateEl.textContent = 'Probeer het opnieuw of neem contact op als dit blijft gebeuren.';
+    } else {
+      iconEl.textContent = '⏳';
+      titleEl.textContent = 'Betaling wordt verwerkt';
+      messageEl.textContent = 'We hebben nog geen definitieve bevestiging van uw bank ontvangen.';
+      stateEl.textContent = 'Ververs deze pagina zo dadelijk, of check uw e-mail — de bevestiging volgt automatisch zodra de betaling rond is.';
+    }
+  }
+
+  if (!orderNumber) {
+    showResult('unknown', false);
+    return;
+  }
+
+  // Meerdere pogingen: de webhook van Mollie kan iets later binnenkomen dan
+  // deze terugkeerpagina. Dit endpoint controleert onafhankelijk bij Mollie.
+  let attempts = 0;
+  function check() {
+    attempts++;
+    fetch('/api/orders/' + encodeURIComponent(orderNumber) + '/check-payment')
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === 'paid' || data.status === 'failed' || data.status === 'cancelled' || attempts >= 5) {
+          showResult(data.status, data.confirmationSent);
+        } else {
+          setTimeout(check, 2500);
+        }
+      })
+      .catch(() => {
+        if (attempts >= 5) showResult('pending', false);
+        else setTimeout(check, 2500);
+      });
+  }
+  check();
+})();
+</script>
+</body>
+</html>

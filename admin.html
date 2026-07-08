@@ -134,7 +134,7 @@ select.status-select{background:var(--surface2);border:1px solid var(--border);c
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Ordernummer</th><th>Datum</th><th>Klant</th><th>Totaal</th><th>Status</th><th>Actie</th></tr></thead>
+            <thead><tr><th>Ordernummer</th><th>Datum</th><th>Klant</th><th>Totaal</th><th>Status</th><th>Bevestiging</th><th>Actie</th></tr></thead>
             <tbody id="orders-tbody"></tbody>
           </table>
         </div>
@@ -149,7 +149,7 @@ select.status-select{background:var(--surface2);border:1px solid var(--border);c
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Foto</th><th>Naam</th><th>Categorie</th><th>Prijs</th><th>Voorraad</th><th>Featured</th><th>Acties</th></tr></thead>
+            <thead><tr><th>Foto</th><th>Naam</th><th>Categorie</th><th>Prijs</th><th>Voorraad (aantal)</th><th>Featured</th><th>Acties</th></tr></thead>
             <tbody id="products-tbody"></tbody>
           </table>
         </div>
@@ -207,8 +207,8 @@ select.status-select{background:var(--surface2);border:1px solid var(--border);c
         <input type="hidden" id="p-image">
         <div id="image-upload-status" style="font-size:0.75rem;color:var(--muted);margin-top:0.4rem"></div>
       </div>
-      <div class="form-group"><label>Op voorraad</label>
-        <select id="p-stock"><option value="true">Ja</option><option value="false">Nee</option></select>
+      <div class="form-group"><label>Voorraadaantal</label>
+        <input type="number" id="p-stock-qty" min="0" step="1" value="0">
       </div>
       <div class="form-group"><label>Featured</label>
         <select id="p-featured"><option value="false">Nee</option><option value="true">Ja</option></select>
@@ -295,19 +295,24 @@ async function loadOrders() {
 
 function renderOrders(orders) {
   const tb = document.getElementById('orders-tbody');
-  if (!orders.length) { tb.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:2rem">Geen bestellingen</td></tr>'; return; }
+  if (!orders.length) { tb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem">Geen bestellingen</td></tr>'; return; }
   tb.innerHTML = orders.map(o => {
     const c = typeof o.customer === 'string' ? JSON.parse(o.customer) : o.customer;
     const name = c ? ((c.voornaam || '') + ' ' + (c.achternaam || '')).trim() || c.email || '—' : '—';
     const date = new Date(o.created_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
     const sc = { paid: 'badge-paid', pending: 'badge-pending', failed: 'badge-failed', cancelled: 'badge-cancelled', shipped: 'badge-shipped' }[o.status] || 'badge-pending';
     const sl = { paid: 'Betaald', pending: 'In afwachting', failed: 'Mislukt', cancelled: 'Geannuleerd', shipped: 'Verzonden' }[o.status] || o.status;
+    const confirmed = !!o.confirmation_sent_at;
     return `<tr>
       <td style="font-family:'Cormorant Garamond',serif;color:var(--gold)">${o.order_number}</td>
       <td style="color:var(--muted);font-size:0.8rem">${date}</td>
       <td>${name}</td>
       <td>€ ${parseFloat(o.total||0).toFixed(2).replace('.',',')}</td>
       <td><span class="badge ${sc}">${sl}</span></td>
+      <td>
+        <span class="badge ${confirmed ? 'badge-paid' : 'badge-pending'}">${confirmed ? 'Verstuurd' : 'Nog niet'}</span>
+        <button class="btn-action" style="padding:0.3rem 0.6rem;font-size:0.68rem;margin-left:0.4rem" onclick="resendConfirmation('${o.order_number}')">↻ Opnieuw</button>
+      </td>
       <td><select class="status-select" onchange="updateOrderStatus('${o.order_number}',this.value)">
         <option value="">Wijzig…</option>
         <option value="pending">In afwachting</option>
@@ -335,6 +340,12 @@ async function updateOrderStatus(orderNumber, status) {
   else toast('Fout bij bijwerken', false);
 }
 
+async function resendConfirmation(orderNumber) {
+  const res = await api(`/api/admin/orders/${orderNumber}/resend-confirmation`, { method: 'POST' });
+  if (res.ok) { toast('✅ Bevestigingsmail verstuurd'); loadOrders(); }
+  else { const e = await res.json().catch(()=>({})); toast(e.error || 'Versturen mislukt', false); }
+}
+
 // PRODUCTEN
 async function loadProducts() {
   const res = await api('/api/admin/products');
@@ -348,28 +359,39 @@ function renderProducts(products) {
   const tb = document.getElementById('products-tbody');
   if (!products.length) { tb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem">Geen producten</td></tr>'; return; }
   const cats = { beans: 'Koffiebonen', machines: 'Machines', onderdelen: 'Onderdelen' };
-  tb.innerHTML = products.map(p => `<tr>
+  tb.innerHTML = products.map(p => {
+    const qty = p.stock_quantity ?? 0;
+    const low = qty > 0 && qty <= 5;
+    return `<tr>
     <td>${p.image ? `<img src="${p.image}" style="width:44px;height:44px;object-fit:cover;border:1px solid var(--border)">` : '<span style="color:var(--muted)">—</span>'}</td>
     <td><strong>${p.name}</strong><br><small style="color:var(--muted)">${p.slug}</small></td>
     <td>${cats[p.category] || p.category}</td>
     <td>€ ${parseFloat(p.price||0).toFixed(2).replace('.',',')}</td>
-    <td><span class="badge ${p.in_stock?'badge-paid':'badge-failed'}">${p.in_stock?'Ja':'Nee'}</span></td>
+    <td>
+      <div style="display:flex;align-items:center;gap:0.4rem">
+        <button class="btn-action" style="padding:0.2rem 0.55rem;font-size:0.75rem" onclick="adjustStock('${p.slug}',-1)">−</button>
+        <span class="badge ${qty > 0 ? (low ? 'badge-pending' : 'badge-paid') : 'badge-failed'}" style="min-width:2.2rem;text-align:center">${qty}</span>
+        <button class="btn-action" style="padding:0.2rem 0.55rem;font-size:0.75rem" onclick="adjustStock('${p.slug}',1)">+</button>
+      </div>
+    </td>
     <td>${p.featured ? '⭐' : '—'}</td>
     <td style="display:flex;gap:0.5rem">
-      <button class="btn-edit" onclick="openProductModalBySlug('${p.slug}')">Wijzig</button>
+      <button class="btn-edit" onclick='openProductModal(${JSON.stringify(p)})'>Wijzig</button>
       <button class="btn-danger" onclick="deleteProduct('${p.slug}')">Verwijder</button>
     </td>
-  </tr>`).join('');
+  </tr>`;
+  }).join('');
+}
+
+async function adjustStock(slug, delta) {
+  const res = await api(`/api/admin/products/${slug}/stock`, { method: 'PATCH', body: JSON.stringify({ delta }) });
+  if (res.ok) { loadProducts(); }
+  else { const e = await res.json().catch(()=>({})); toast(e.error || 'Voorraad bijwerken mislukt', false); }
 }
 
 function filterProducts(q) {
   const l = q.toLowerCase();
   renderProducts(allProducts.filter(p => p.name.toLowerCase().includes(l) || p.slug.toLowerCase().includes(l)));
-}
-
-function openProductModalBySlug(slug) {
-  const p = allProducts.find(prod => prod.slug === slug);
-  openProductModal(p || null);
 }
 
 function openProductModal(p) {
@@ -382,7 +404,7 @@ function openProductModal(p) {
   document.getElementById('p-price').value = p?.price || '';
   document.getElementById('p-description').value = p?.description || '';
   document.getElementById('p-image').value = p?.image || '';
-  document.getElementById('p-stock').value = p?.in_stock !== false ? 'true' : 'false';
+  document.getElementById('p-stock-qty').value = p?.stock_quantity ?? 0;
   document.getElementById('p-featured').value = p?.featured ? 'true' : 'false';
   document.getElementById('image-upload-status').textContent = '';
   document.getElementById('p-image-file').value = '';
@@ -493,7 +515,7 @@ async function saveProduct() {
     price: parseFloat(document.getElementById('p-price').value) || 0,
     description: document.getElementById('p-description').value.trim(),
     image: document.getElementById('p-image').value.trim(),
-    in_stock: document.getElementById('p-stock').value === 'true',
+    stock_quantity: Math.max(parseInt(document.getElementById('p-stock-qty').value, 10) || 0, 0),
     featured: document.getElementById('p-featured').value === 'true',
     variants: category === 'beans' ? collectVariants() : null,
   };
