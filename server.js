@@ -2,7 +2,6 @@ const express = require('express');
 const path = require('path');
 const { Pool } = require('pg');
 const { createMollieClient } = require('@mollie/api-client');
-const nodemailer = require('nodemailer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -10,21 +9,18 @@ const PORT = process.env.PORT || 3000;
 // ─── Mollie client ───────────────────────────────────────────────────────────
 const mollie = createMollieClient({ apiKey: process.env.MOLLIE_API_KEY });
 
-// ─── Email transporter ──────────────────────────────────────────────────────
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  }
-});
+// ─── Email via Resend ────────────────────────────────────────────────────────
+// Voorheen ging dit via TransIP SMTP (nodemailer), maar TransIP blokkeert/
+// negeert stilzwijgend verzending vanaf onbekende server-IP's (zoals Railway),
+// ook met correcte inloggegevens — mails leken "verstuurd" maar kwamen nooit
+// aan. Resend is een dienst die specifiek gemaakt is om vanaf servers te
+// versturen en heeft dit probleem niet.
+const RESEND_FROM = process.env.RESEND_FROM || 'Koffie Palace <info@koffiepalace.nl>';
 
 async function sendOrderConfirmation(customer, items, total, orderNumber) {
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    console.warn('⚠️ SMTP niet geconfigureerd, mail overgeslagen');
-    return;
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('⚠️ RESEND_API_KEY niet geconfigureerd, mail overgeslagen');
+    throw new Error('RESEND_API_KEY ontbreekt');
   }
   // customer kan JSON string of object zijn
   if (typeof customer === 'string') {
@@ -33,18 +29,24 @@ async function sendOrderConfirmation(customer, items, total, orderNumber) {
   if (typeof items === 'string') {
     try { items = JSON.parse(items); } catch(e) { items = []; }
   }
-  try {
-    const itemsHtml = (items || []).map(i =>
-      `<tr>
-        <td style="padding:8px;border-bottom:1px solid #333;">${i.name}${i.variant ? ' · ' + i.variant : ''} × ${i.qty}</td>
-        <td style="padding:8px;border-bottom:1px solid #333;text-align:right;">€ ${(i.price * i.qty).toFixed(2)}</td>
-       </tr>`
-    ).join('');
 
-    await transporter.sendMail({
-      from: `"Koffie Palace" <${process.env.SMTP_USER}>`,
-      to: customer.email,
-      bcc: process.env.SMTP_USER,
+  const itemsHtml = (items || []).map(i =>
+    `<tr>
+      <td style="padding:8px;border-bottom:1px solid #333;">${i.name}${i.variant ? ' · ' + i.variant : ''} × ${i.qty}</td>
+      <td style="padding:8px;border-bottom:1px solid #333;text-align:right;">€ ${(i.price * i.qty).toFixed(2)}</td>
+     </tr>`
+  ).join('');
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      from: RESEND_FROM,
+      to: [customer.email],
+      bcc: ['info@koffiepalace.nl'],
       subject: `Bevestiging bestelling ${orderNumber} – Koffie Palace`,
       html: `
         <div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;background:#0a0a0a;color:#f5f0e8;padding:40px;">
@@ -62,15 +64,19 @@ async function sendOrderConfirmation(customer, items, total, orderNumber) {
             </tr>
           </table>
           <hr style="border-color:#333;margin:24px 0;">
-          <p style="color:#888;font-size:14px;">Vragen? Mail ons op <a href="mailto:${process.env.SMTP_USER}" style="color:#c9a84c;">${process.env.SMTP_USER}</a></p>
+          <p style="color:#888;font-size:14px;">Vragen? Mail ons op <a href="mailto:info@koffiepalace.nl" style="color:#c9a84c;">info@koffiepalace.nl</a></p>
           <p style="color:#888;font-size:12px;">© Koffie Palace · By Nadira Store · Nederland</p>
         </div>
       `
-    });
-    console.log('✅ Bevestigingsmail verstuurd naar', customer.email);
-  } catch (err) {
-    console.error('❌ Email fout:', err.message);
+    })
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Resend API fout (${res.status}): ${body}`);
   }
+
+  console.log('✅ Bevestigingsmail verstuurd naar', customer.email);
 }
 
 // ─── PostgreSQL connectie ────────────────────────────────────────────────────
@@ -380,12 +386,22 @@ async function handleOrderPaid(order) {
     }
   }
 
-  await sendOrderConfirmation(order.customer, order.items, order.total, order.order_number);
-  const updated = await pool.query(
-    `UPDATE orders SET confirmation_sent_at = NOW() WHERE order_number = $1 RETURNING *`,
-    [order.order_number]
-  );
-  return updated.rows[0];
+  try {
+    await sendOrderConfirmation(order.customer, order.items, order.total, order.order_number);
+    const updated = await pool.query(
+      `UPDATE orders SET confirmation_sent_at = NOW() WHERE order_number = $1 RETURNING *`,
+      [order.order_number]
+    );
+    return updated.rows[0];
+  } catch (err) {
+    // Belangrijk: NIET confirmation_sent_at zetten als het versturen mislukt —
+    // anders denkt de rest van de applicatie (en de admin) dat de klant een
+    // mail heeft gehad terwijl dat niet zo is. Bij de volgende poging
+    // (webhook-retry, fallback-check op de bedankpagina, of handmatig
+    // "Opnieuw" in admin) wordt het gewoon opnieuw geprobeerd.
+    console.error('❌ Bevestigingsmail mislukt voor', order.order_number, ':', err.message);
+    return order;
+  }
 }
 
 // ─── Betaalstatus synchroniseren (gedeeld door webhook + fallback-check) ────
