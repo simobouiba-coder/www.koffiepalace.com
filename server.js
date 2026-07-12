@@ -698,6 +698,14 @@ app.get('/health', async (req, res) => {
   }
 });
 
+// ─── Admin paneel routes ──────────────────────────────────────────────────────
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin.html'));
+});
+app.get('/admin/*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
 // ─── Catch-all ───────────────────────────────────────────────────────────────
 app.get('*', (req, res) => {
   if (req.path.startsWith('/api/')) {
